@@ -9,3 +9,5 @@ Performance and data preservation come first. Record workload, idle/disabled cos
 Run `npm run verify`; run packaged browser tests for runtime changes and `npm run test:performance` when changing startup, rendering, tab-wide operations, storage or observation. Add negative architecture fixtures when changing enforcement. No test bridge may ship in production. Review failures, concurrency, suspension and privacy boundaries. See `docs/review.md` for the current review record.
 
 Before introducing a runtime dependency or implementing validation, overlays, large lists or UI redesigns, consult `docs/dependencies.md`. Its candidates have explicit revisit triggers; they are not automatic installations. Record adoption/deferral and actual measured costs.
+
+Prefer established, widely adopted, actively maintained packages when suitability is comparable. Use a less familiar alternative only for a concrete benefit; do not optimize tiny bundle differences at the expense of readable code, documentation or ecosystem support.
