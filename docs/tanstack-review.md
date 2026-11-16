@@ -65,4 +65,8 @@ Form supports Standard Schema validators including Zod; it manages form state ra
 4. Evaluate Hotkeys and Form with those actual workflows, then Virtual when list scale warrants it and Pacer when timing/concurrency requirements warrant it. Their adoption decisions are independent; none requires adopting the whole stack. Verify exact framework adapters and peer dependencies for each selected version.
 5. Record adopted/deferred status, version, license, transitive inputs, lifecycle ownership and measured cost in the feature decision/PR. Keep component code out of worker/content bundles unless that specific context needs it. Preserve architecture checks and the existing performance policy.
 
-No runtime library was installed and no benchmark comparison of these candidates has been run for this review. The existing production implementation remains the baseline, not evidence that any candidate is already faster or acceptable.
+## Completed comparison
+
+The [packaged UI comparison](performance/ui-runtime-2026-11-16.md) and [decision](decisions/2026-11-16-ui-runtime.md) now cover the four standard variants plus three real Radix Dialog integrations. Candidate packages are installed only in the isolated experiment's development package; production still ships no third-party JavaScript runtime.
+
+Preact is the preferred starting component candidate for a current-sized redesign, with native controls where they fit. Keep production's current UI until a designed slice is accepted and verified. Do not adopt the tested Preact/Radix combination: it missed 4 of 20 rapid Escape presses. Its 1,000-row unvirtualized warm-readiness tail also crossed the performance review threshold; large views require further work. Redact works through direct esbuild aliases for the tested slice, but neither it nor Preact establishes a universal interaction-speed improvement over React. Measurements, limits and reproduction instructions are linked above.

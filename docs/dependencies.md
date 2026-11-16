@@ -10,6 +10,8 @@ Prefer established, widely adopted, actively maintained packages when they fit t
 
 Performance remains the first priority. React is not a predetermined UI choice. Compare a representative screen using native DOM, Preact, React and TanStack Redact before selecting a component runtime. See the [TanStack review](tanstack-review.md) for the full public library catalog, adoption triggers and extension-specific limits. A TanStack package's maturity must be assessed independently of the reputation of Query or Table.
 
+The [initial comparison is complete](performance/ui-runtime-2026-11-16.md). Preact leads as a component candidate for current-sized settings/command UI; production stays native until an actual redesigned slice is verified. The tested Preact/Radix dialog pairing is blocked by missed rapid Escape presses, and large unvirtualized Preact lists require performance review. Candidate packages are isolated development dependencies in `experiments/ui-runtime/`, never production imports.
+
 ## Next implementation: runtime validation with Zod
 
 **Recommend standard Zod as the next runtime dependency. Not installed yet.**

@@ -1,5 +1,7 @@
 # Performance baseline
 
+For the separate native DOM/Preact/React/Redact experiment, see [UI runtime results](performance/ui-runtime-2026-11-16.md). Those fixtures are not the production popup and their timings must not be compared directly with the architecture baseline below.
+
 The architecture refactor is compared with commit `3bf1b0a`, before the runtime extraction. Measurements used disposable profiles and fictional local tab data; no live browser or user content was accessed.
 
 ## Method

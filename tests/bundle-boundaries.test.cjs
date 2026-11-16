@@ -21,3 +21,17 @@ test("bundle checks reject worker/UI mixing and test bridges", async () => {
   };
   assert.deepEqual(checkBundles(valid, {}), []);
 });
+test("experiment sources and instrumentation cannot enter a release bundle", async () => {
+  const { checkBundles } = await import("../scripts/checks/bundles.mjs");
+  const bad = {
+    outputs: {
+      "dist/popup.js": {
+        inputs: { "experiments/ui-runtime/component.tsx": {} },
+      },
+    },
+  };
+  assert.equal(
+    checkBundles(bad, { "dist/popup.js": "globalThis.ModsUiFixture" }).length,
+    2,
+  );
+});
