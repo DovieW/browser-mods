@@ -8,14 +8,15 @@ const { execFileSync } = require('node:child_process');
   const manifest = JSON.parse(await fs.readFile(path.join(root, 'manifest.json'), 'utf8'));
   const pkg = JSON.parse(await fs.readFile(path.join(root, 'package.json'), 'utf8'));
   if (manifest.version !== pkg.version || !/^\d+\.\d+\.\d+$/.test(manifest.version)) throw Error('Release versions must match');
-  const files = ['manifest.json', 'background.js', 'command-errors.js', 'popup.html', 'popup.js', 'popup-settings.js', 'popup.css', 'shortcut-ui.js', 'shortcut-memory.js', 'tab-settings.js', 'offscreen.html', 'offscreen.js', 'logo16.png', 'logo48.png', 'logo128.png', 'LICENSE', 'README.md', 'CHANGELOG.md', 'PRIVACY.md'];
-  const output = path.resolve(process.argv[2] || path.join(os.tmpdir(), `simple-shortcuts-release-${manifest.version}`));
+  const source = path.join(root, 'dist');
+  const files = await fs.readdir(source);
+  const output = path.resolve(process.argv[2] || path.join(os.tmpdir(), `dovies-browser-mods-release-${manifest.version}`));
   await fs.mkdir(output, { recursive: true });
-  const stage = await fs.mkdtemp(path.join(os.tmpdir(), 'simple-shortcuts-package-'));
+  const stage = await fs.mkdtemp(path.join(os.tmpdir(), 'dovies-browser-mods-package-'));
   try {
-    for (const file of files) await fs.copyFile(path.join(root, file), path.join(stage, file));
-    const name = `simple-shortcuts-v${manifest.version}.zip`;
-    execFileSync('zip', ['-q', '-X', '-9', name, ...files], { cwd: stage });
+    for (const file of files) await fs.cp(path.join(source, file), path.join(stage, file), { recursive: true });
+    const name = `dovies-browser-mods-v${manifest.version}.zip`;
+    execFileSync('zip', ['-q', '-r', '-X', '-9', name, ...files.filter(file => file !== 'build-meta.json')], { cwd: stage });
     await fs.copyFile(path.join(stage, name), path.join(output, name));
     console.log(path.join(output, name));
   } finally {

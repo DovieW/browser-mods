@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "version": "0.7.0",
-  "name": "Simple Shortcuts",
+  "name": "Dovie's Browser Mods",
   "description": "Simple Chrome extension that adds useful shortcuts.",
   "icons": {
     "16": "logo16.png",
@@ -94,14 +94,18 @@
   },
   "action": {
     "default_popup": "popup.html",
-    "default_title": "Simple Shortcuts"
+    "default_title": "Dovie's Browser Mods"
   },
   "background": {
     "service_worker": "background.js"
   },
-  "minimum_chrome_version": "116",
+  "minimum_chrome_version": "127",
   "optional_host_permissions": [
     "http://*/*",
     "https://*/*"
-  ]
+  ],
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
+  }
 }

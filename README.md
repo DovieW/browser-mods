@@ -1,14 +1,22 @@
-# Simple Shortcuts
+# Dovie's Browser Mods
 
 [Install for Chrome](https://chromewebstore.google.com/detail/simple-shortcuts/ahocokogjkjpkdjaobcjjdnmmlhpcapn)
 
 Keyboard shortcuts for tabs, groups, windows, navigation, and media. Requires Chrome 116 or newer.
 
+## Migration build
+
+This repository is being migrated into a unified browser toolkit. The architecture and shared theme are established; other utility extensions have not yet been integrated. Their existing installations remain the working versions.
+
+Run `npm ci`, `npm run verify`, then load `dist/` as an unpacked extension. Use `npm run test:browser:packaged` for disposable-profile regression checks. The options page displays desired keys and per-device observed history. Chrome assignments still require manual editing. Existing snapshot backups remain available in the popup while the migration proceeds.
+
+See [architecture](docs/architecture.md) and [migration status](docs/migration.md). The shared standards repository is https://github.com/DovieW/dovies-mods-shared.
+
 ## Setup
 
 Open the extension popup and click **Edit keys**, or visit `chrome://extensions/shortcuts`. The popup shows your actual assignments, lets you search commands, and lists missing or changed bindings against a saved snapshot. The rows are read-only; assign keys in Chrome's shortcut settings.
 
-This README describes the current source; see [the changelog](CHANGELOG.md) for released and unreleased changes. To install a [GitHub release](https://github.com/DovieW/simple-shortcuts/releases), extract its extension ZIP, enable **Developer mode** at `chrome://extensions`, choose **Load unpacked**, and select the extracted directory. You can also load this source directory. After updating the files, click the extension's reload button there. An unpacked copy can have different shortcut assignments from the installed Web Store version. GitHub releases and Chrome Web Store publication are separate; the store version may lag.
+This README describes the current source; see [the changelog](CHANGELOG.md) for released and unreleased changes. To install a [GitHub release](https://github.com/DovieW/dovies-browser-mods/releases), extract its extension ZIP, enable **Developer mode** at `chrome://extensions`, choose **Load unpacked**, and select the extracted directory. Load the built `dist/` directory for this migration version. After updating the files, click the extension's reload button there. An unpacked copy can have different shortcut assignments from the installed Web Store version. GitHub releases and Chrome Web Store publication are separate; the store version may lag.
 
 Four shortcuts are suggested by the extension on installation. Chrome can assign them differently or leave them unset if they conflict with existing shortcuts. Everything else below is a recommendation you must assign yourself. Chrome allows at most four suggested shortcuts in an extension manifest.
 
@@ -133,7 +141,7 @@ There are no permanent required host permissions, remote scripts, analytics, or 
 
 ## Development and verification
 
-Load this directory with **Load unpacked** at `chrome://extensions` (Developer mode).
+Build with `npm run build`, then load `dist/` with **Load unpacked** at `chrome://extensions` (Developer mode).
 
 ```sh
 npm ci

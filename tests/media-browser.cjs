@@ -10,9 +10,7 @@ const http = require('node:http');
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'simple-shortcuts-media-'));
   const fixture = path.join(root, 'extension');
   await fs.mkdir(fixture);
-  for (const file of ['manifest.json', 'background.js', 'command-errors.js', 'popup.html', 'popup.js', 'popup.css', 'shortcut-ui.js', 'shortcut-memory.js', 'tab-settings.js', 'popup-settings.js', 'offscreen.html', 'offscreen.js', 'logo16.png', 'logo48.png', 'logo128.png']) {
-    await fs.copyFile(path.join(process.env.SHORTCUTS_TEST_EXTENSION || path.resolve(__dirname, '..'), file), path.join(fixture, file));
-  }
+  await fs.cp(process.env.SHORTCUTS_TEST_EXTENSION || path.resolve(__dirname, '..', 'dist'), fixture, {recursive:true});
   const manifest = JSON.parse(await fs.readFile(path.join(fixture, 'manifest.json'), 'utf8'));
   manifest.host_permissions = ['http://127.0.0.1/*'];
   await fs.writeFile(path.join(fixture, 'manifest.json'), JSON.stringify(manifest));

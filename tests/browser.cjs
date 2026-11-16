@@ -8,7 +8,7 @@ const http = require('node:http');
 
 (async () => {
   const profile = await fs.mkdtemp(path.join(os.tmpdir(), 'simple-shortcuts-browser-'));
-  const extension = path.resolve(process.env.SHORTCUTS_TEST_EXTENSION || path.join(__dirname, '..'));
+  const extension = path.resolve(process.env.SHORTCUTS_TEST_EXTENSION || path.join(__dirname, '..', 'dist'));
   const artifacts = process.env.SHORTCUTS_TEST_ARTIFACTS || path.join(profile, 'artifacts');
   await fs.mkdir(artifacts, { recursive: true });
   const context = await chromium.launchPersistentContext(profile, {
