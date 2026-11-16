@@ -1,13 +1,5 @@
 {
-  "entry": [
-    "src/entrypoints/**/*.ts",
-    "src/core/actions/catalog.ts"
-  ],
-  "project": [
-    "src/**/*.ts"
-  ],
-  "ignoreDependencies": [
-    "@doview/mods-shared",
-    "@eslint/js"
-  ]
+  "entry": ["src/entrypoints/**/*.ts", "src/core/actions/catalog.ts"],
+  "project": ["src/**/*.ts"],
+  "ignoreDependencies": ["@doview/mods-shared", "@eslint/js"]
 }

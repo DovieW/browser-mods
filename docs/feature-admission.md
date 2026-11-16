@@ -1,16 +1,16 @@
 # Feature admission, performance, and packaging
 
-Status: project policy. Applies before importing functionality from another extension or adding a substantial new feature. This revises the earlier assumption that every selected utility will ship in one Chrome Web Store package.
+Status: project policy. Applies before importing functionality from another extension or adding a substantial new feature. Browser Mods remains one extension; use this policy to evaluate additions without changing that product direction.
 
 ## Decide what belongs together
 
-Sharing a repository, engineering standards, design tokens or implementation code does not require sharing an installed extension. Assess runtime and distribution boundaries separately. Multiple builds remain an option, not an architecture already implemented.
+Browser Mods has one installed package. Internal modules share its popup, settings and runtime. The shared standards/theme repository can serve other projects without making those projects part of Browser Mods.
 
 For every proposed feature, record a short decision in `docs/decisions/` covering:
 
 - User workflow and relationship to this package's stated purpose.
 - Existing implementation, useful behavior and safeguards to retain; do not import an entire background script by default.
-- Recommendation: include in this extension, share code but ship separately, or defer. Explain the tradeoff.
+- Recommendation: include in this extension or defer. Explain the tradeoff.
 - Code owner/module, dependency direction and integration points. Avoid shared mutable state and imports into another feature's internals.
 - Required/optional permissions, site access, data flow and any external services.
 - Activation and teardown: what runs on page load, worker wake, popup open and while idle; what happens when disabled or access is revoked.
@@ -35,11 +35,11 @@ For additions that affect runtime, record a reproducible before/after comparison
 
 Measure the relevant subset of popup time to usable UI, input-to-result latency, worker startup, page-load/interaction impact, idle CPU/wakeups, retained memory after repeated use/teardown, storage writes and script injection across tabs/frames. Include hundreds of tabs for tab-wide work and media-heavy pages for observers.
 
-Investigate repeatable latency regressions exceeding both 20% and 20 ms, consistent with the architecture guide. This is a review trigger, not a universal safe threshold: idle activity, leaks, page jank, excessive writes and per-tab multiplication still need review below it. The benchmark suite and baselines are not yet implemented; passing current tests does not establish performance acceptance.
+Investigate repeatable latency regressions exceeding both 20% and 20 ms, consistent with the architecture guide. This is a review trigger, not a universal safe threshold: idle activity, leaks, page jank, excessive writes and per-tab multiplication still need review below it. The initial benchmark and lifecycle checks are documented in performance.md. They cover current workloads; passing them does not establish performance acceptance for future page observers or other new workloads.
 
 ## Reliability and permission boundaries
 
-Feature failures should produce scoped errors and leave unrelated tools usable. A single service worker remains a shared failure domain; folder boundaries alone do not provide process isolation. Keep heavy/specialized functionality separate when its lifecycle, permissions or failure modes warrant it.
+Feature failures should produce scoped errors and leave unrelated tools usable. A single service worker remains a shared failure domain; folder boundaries alone do not provide process isolation. Defer a feature and discuss the tradeoff when its lifecycle, permissions or failure modes conflict with the one-extension design.
 
 Use narrow optional permissions where supported and request them for a concrete user action. Document permissions that cannot be optional. Module switches do not isolate privileges: privileged dispatch still validates message schemas, senders, tab/frame ownership and allowed actions.
 
@@ -49,11 +49,11 @@ Keep credentials local, data access feature-specific and diagnostics free of pag
 
 The Store requires a narrow, understandable single purpose and discourages bundles of unrelated functionality. A broad title such as “browser improvements,” optional switches, a shared palette, or branding do not establish compliance. Do not promise Store acceptance for the full planned toolkit.
 
-Before combining features in a Store build, document the package's actual purpose and explain why the included behaviors support it. Recheck current official guidance at submission. Clearly separate features may need separate extensions even if maintained in one codebase. Personal unpacked use is a separate distribution choice, not evidence that the combined Store build is acceptable.
+Before combining features in a Store build, document the package's actual purpose and explain why the included behaviors support it. Recheck current official guidance at submission. If a feature conflicts with this policy, discuss its inclusion or distribution explicitly before proceeding; separate builds are not our default plan. Personal unpacked use is a separate distribution choice, not evidence that the combined Store build is acceptable.
 
 ## Migration and acceptance
 
-- Candidate lists are evaluations, not commitments to a single runtime or Store package.
+- Candidate lists are evaluations; accepted features are internal modules of this one extension.
 - Keep the old extension working until parity, failure recovery, migration and performance have been verified.
 - Import settings through validated, reversible paths; extensions do not automatically share private storage.
 - Port safeguards and behavior tests, not just happy paths. Check worker suspension, popup closure, navigation, permission denial/revocation and module disable/re-enable.
