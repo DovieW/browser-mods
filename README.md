@@ -10,7 +10,7 @@ This repository is being migrated into a unified browser toolkit. The architectu
 
 Run `npm ci`, `npm run verify`, then load `dist/` as an unpacked extension. Use `npm run test:browser:packaged` for disposable-profile regression checks. The options page displays desired keys and per-device observed history. Chrome assignments still require manual editing. Existing snapshot backups remain available in the popup while the migration proceeds.
 
-See [architecture](docs/architecture.md) and [migration status](docs/migration.md). The shared standards repository is https://github.com/DovieW/dovies-mods-shared.
+See [architecture](docs/architecture.md), [feature admission and performance policy](docs/feature-admission.md), and [migration status](docs/migration.md). The shared standards repository is https://github.com/DovieW/dovies-mods-shared.
 
 ## Setup
 
