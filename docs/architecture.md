@@ -45,3 +45,7 @@ Packaged browser tests cover the real popup/options, production message routing,
 Run `npm run test:performance` for disposable browser measurements and 500/1000-tab synthetic operation timings. See [performance](performance.md) for baselines, conditions and limits. Idle/disposal tests enforce no recurring work after quiescence and no listener leaks after teardown. Future page-observing modules must add their own workload/cleanup checks.
 
 [Feature admission](feature-admission.md) still applies to performance, permissions and Store compatibility. It does not change the one-extension architecture.
+
+## Runtime dependency choices
+
+See [dependency decisions](dependencies.md) before adding runtime libraries. The next recommended implementation is standard Zod for boundary validation; no validator has been installed yet. Overlay positioning, list virtualization and templating have separate revisit triggers. Favor measurable benefits and readable code rather than a zero-dependency rule or speculative size optimization.
