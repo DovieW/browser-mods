@@ -257,7 +257,7 @@ const { execFileSync } = require("node:child_process");
     );
 
     const popup = await context.newPage();
-    await popup.goto(`chrome-extension://${id}/popup.html`);
+    await popup.goto(`chrome-extension://${id}/legacy.html`);
     await popup.locator(".shortcut-item").first().waitFor();
     const failure = await popup.evaluate(() =>
       chrome.runtime.sendMessage({

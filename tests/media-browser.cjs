@@ -91,7 +91,7 @@ const http = require("node:http");
       .waitForFunction(() => !document.querySelector("audio").paused);
     const id = worker.url().split("/")[2];
     const popup = await context.newPage();
-    await popup.goto(`chrome-extension://${id}/popup.html`);
+    await popup.goto(`chrome-extension://${id}/legacy.html`);
     await page.bringToFront();
     const result = await popup.evaluate(() =>
       chrome.runtime.sendMessage({

@@ -6,7 +6,7 @@ The reference projects describe useful behavior. Implement our own selected work
 
 ## Confirmed product choices
 
-- **Redact** is the selected renderer for the redesigned extension-page UI. Keep the measured performance and compatibility gates in the [UI decision](decisions/2026-11-16-ui-runtime.md). The production UI remains native until the first real slice is verified.
+- **Redact** is the selected renderer for the redesigned extension-page UI. Keep the measured performance and compatibility gates in the [UI decision](decisions/2026-11-16-ui-runtime.md). The first Redact workspace shell is implemented; native maintenance screens remain linked from options. See [UI interaction](ui-interaction.md).
 - **Full-page screenshots:** one keyboard shortcut starts capture and automatically copies the complete image to the clipboard, without a manual preview/save step. PDF export is required for larger pages. "Instant" means minimal interaction and fast completion, not a promise of zero capture time on arbitrarily long pages.
 - **Extension management:** search, individual toggles, saved profiles and bulk toggling are required.
 - **Extension package export:** save `extension-name-v1.2.3.zip`, using the actual package version and placing the extension files directly at ZIP root, with `manifest.json` at the root. A source browser/editor is not needed.

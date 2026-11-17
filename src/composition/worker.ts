@@ -1,3 +1,9 @@
+import {
+  authorizeLauncher,
+  openPalette,
+  readPreferences,
+  actionSection,
+} from "../features/workspace/public";
 import { actionRegistry } from "../core/actions/registry";
 import { listenerScope } from "../platform/chrome/listeners";
 import { MEDIA_ORIGINS } from "../contracts/media";
@@ -53,6 +59,7 @@ export function createWorker(chrome: BrowserPort) {
     await chrome.action.setBadgeText({ text: "" });
   }
   const handlers: Record<CommandId, CommandHandler> = {
+    "open-palette": () => openPalette(chrome),
     "duplicate-tab": duplicateTabs,
     "discard-tabs": discardTabs,
     "pin-tab": (context) =>
@@ -112,6 +119,11 @@ export function createWorker(chrome: BrowserPort) {
   ) {
     if (!Object.hasOwn(handlers, command))
       throw commandError("unknown_command");
+    if (
+      command !== "open-palette" &&
+      (await readPreferences()).disabled.includes(actionSection(command))
+    )
+      throw commandError("action_failed");
     const context = await commandContext();
     // Copying, pinning, and other commands that leave the selected tab alone do
     // not reset a walk. Last-active switching deliberately starts a fresh switch.
@@ -124,6 +136,9 @@ export function createWorker(chrome: BrowserPort) {
   }
   function register() {
     tabs.register();
+    scope.listen(chrome.tabs.onRemoved, (id) => {
+      void chrome.storage.session.remove(`mods.launcher.${id}`).catch(() => {});
+    });
     scope.listen(chrome.commands.onCommand, (command, tab) => {
       // Request in the user gesture, before awaiting context or the command queue.
       const permission =
@@ -138,6 +153,18 @@ export function createWorker(chrome: BrowserPort) {
     });
 
     scope.listen(chrome.runtime.onMessage, (raw: unknown, sender, respond) => {
+      if (
+        raw &&
+        typeof raw === "object" &&
+        "type" in raw &&
+        raw.type === "mods.launcher.authorize"
+      ) {
+        if (sender.id !== chrome.runtime.id) return false;
+        void authorizeLauncher(sender).then((ok) => {
+          respond({ ok });
+        });
+        return true;
+      }
       const message = parseWorkerMessage(raw);
       if (!message) return false;
       if (
@@ -146,6 +173,16 @@ export function createWorker(chrome: BrowserPort) {
       )
         return;
       enqueueCommand(async () => {
+        if (!(await authorizeLauncher(sender)))
+          throw commandError("invalid_target");
+        if (
+          sender.tab &&
+          sender.url?.startsWith(chrome.runtime.getURL("launcher.html"))
+        ) {
+          const context = await commandContext();
+          if (context.active?.id !== sender.tab.id)
+            throw commandError("invalid_target");
+        }
         if (message.type === "run-command") {
           const granted =
             message.command === "pause-all-tabs"

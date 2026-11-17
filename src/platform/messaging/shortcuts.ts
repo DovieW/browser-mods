@@ -48,3 +48,12 @@ export async function readShortcutSetup(): Promise<{
     records: value.records,
   };
 }
+
+export async function adoptShortcut(command: string): Promise<void> {
+  const r: unknown = await chrome.runtime.sendMessage({
+    type: "mods.shortcuts.adopt",
+    command,
+  });
+  if (!r || typeof r !== "object" || !("ok" in r) || r.ok !== true)
+    throw Error("Could not save this assignment. Local records are retained.");
+}

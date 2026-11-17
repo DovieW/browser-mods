@@ -1,4 +1,5 @@
 export const commands = {
+  "open-palette": { description: "Open Browser Mods command palette" },
   "duplicate-tab": {
     suggested_key: "Alt+Shift+D",
     description: "Duplicate tab(s)",

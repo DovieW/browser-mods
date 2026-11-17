@@ -1,6 +1,6 @@
 # UI runtime comparison
 
-Status: Redact selected by the user for the next UI redesign; production adoption has not started.
+Status: Redact selected; production workspace shell adopted 2026-11-17. See [UI interaction](../ui-interaction.md).
 
 ## Problem and scope
 
@@ -29,7 +29,7 @@ The result does not require TanStack Start, Vite, global state management, routi
 - Component code belongs in feature UI and shared UI helpers. Entrypoints stay thin; domain code and persisted shortcut reconciliation remain independent of the renderer.
 - No framework code enters the service worker, offscreen clipboard or content/page scripts merely because extension-page UI uses it.
 - No new permissions, content-script registrations, remote services or worker activity were introduced. A production UI library would load only when its extension page is opened; effects/listeners must dispose on unmount or closure.
-- The experiment's package and lockfile are isolated development dependencies. The root production build imports none of them; bundle checks reject experiment sources and instrumentation. The production package remains unchanged.
+- The experiment's package and lockfile are isolated development dependencies. The root production build imports none of them; bundle checks reject experiment sources and instrumentation. The experiment remains isolated; the later workspace shell adopts Redact through its own root dependency.
 - Retain the comparison until the UI choice is implemented and covered by product benchmarks; then update or retire it instead of maintaining a second product UI indefinitely.
 
 ## Evidence and acceptance limits

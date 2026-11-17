@@ -1,6 +1,6 @@
 # Runtime dependency decisions
 
-Reviewed 2026-11-16. This is a recommendation and revisit checklist, not a record of installed packages. Browser Mods currently ships no third-party JavaScript runtime libraries. Build/check/test tools are development dependencies; the shared package contributes local theme assets.
+Reviewed 2026-11-16. This is a recommendation and revisit checklist, not a record of installed packages. Browser Mods ships pinned Redact 0.3.1 for its workspace UI; native React is excluded by bundle checks. Build/check/test tools are development dependencies; the shared package contributes local theme assets.
 
 The goal is reliable, maintainable functionality with good measured performance. Zero dependencies is not a goal in itself, and a few extra kilobytes are not sufficient reason to prefer a harder-to-maintain implementation.
 
@@ -10,7 +10,7 @@ Prefer established, widely adopted, actively maintained packages when they fit t
 
 Performance remains the first priority: evaluate responsiveness, startup, memory and idle cost with correct behavior. Among choices with comparable performance, prefer fewer future compatibility and maintenance problems. Bundle size counts when it causes a material runtime cost; smaller output alone does not justify a replacement runtime or additional integration risk. See the [TanStack review](tanstack-review.md) for the full public library catalog, adoption triggers and extension-specific limits. A TanStack package's maturity must be assessed independently of the reputation of Query or Table.
 
-The [initial comparison is complete](performance/ui-runtime-2026-11-16.md). **The user selected Redact for the redesigned extension-page UI.** Its tested native/Radix dialog interactions and direct-esbuild integration passed. Production stays native until the first real slice is verified. Pin and test exact components/adapters; do not assume blanket React compatibility or ship native React alongside Redact. The tested Preact/Radix pairing remains blocked. Candidate packages are currently isolated development dependencies in `experiments/ui-runtime/`, never production imports.
+The [initial comparison is complete](performance/ui-runtime-2026-11-16.md). **The user selected Redact for the redesigned extension-page UI.** Its tested native/Radix dialog interactions and direct-esbuild integration passed. The production popup/options/palette shell now uses Redact; retained maintenance views remain native. Pin and test exact components/adapters; do not assume blanket React compatibility or ship native React alongside Redact. The tested Preact/Radix pairing remains blocked. Other comparison candidates remain isolated in `experiments/ui-runtime/`; production imports no experiment code.
 
 ## Next implementation: runtime validation with Zod
 

@@ -110,5 +110,38 @@ export function createShortcutService(port: ShortcutPort) {
     return task;
   }
 
-  return { reconcileShortcuts };
+  async function adoptAssignment(command: string): Promise<void> {
+    await reconcileShortcuts();
+    const task = pending.then(async () => {
+      const local = await port.readLocal();
+      const own: unknown = local["mods.shortcuts.local"];
+      if (!validateRecord(own)) throw Error("Shortcut history is unavailable.");
+      const actual = await port.assignments();
+      if (!Object.hasOwn(actual, command)) throw Error("Unknown shortcut.");
+      const sync = await port.readSync();
+      const peers = Object.values(sync).filter(validateRecord);
+      const clock = Math.max(own.clock, ...peers.map((p) => p.clock)) + 1;
+      const next: DeviceRecord = {
+        ...own,
+        clock,
+        baseline: { ...actual },
+        revisions: [
+          ...own.revisions,
+          {
+            id: `${own.device}:${clock}`,
+            device: own.device,
+            command,
+            binding: actual[command] ?? "",
+            clock,
+            observedAt: Date.now(),
+          },
+        ].slice(-1000),
+      };
+      await port.writeLocal({ "mods.shortcuts.local": next });
+    });
+    pending = task.catch(() => undefined);
+    await task;
+    await reconcileShortcuts();
+  }
+  return { reconcileShortcuts, adoptAssignment };
 }

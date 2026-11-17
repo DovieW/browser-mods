@@ -9,7 +9,8 @@
     "exactOptionalPropertyTypes": true,
     "noEmit": true,
     "allowJs": false,
-    "types": ["chrome"]
+    "types": ["chrome"],
+    "jsx": "react-jsx"
   },
-  "include": ["src/**/*.ts"]
+  "include": ["src/**/*.ts", "src/**/*.tsx"]
 }

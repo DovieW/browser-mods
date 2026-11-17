@@ -22,7 +22,7 @@ const assert = require("node:assert/strict");
     const page = await context.newPage();
     const errors = [];
     page.on("pageerror", (e) => errors.push(e.message));
-    await page.goto(`chrome-extension://${id}/options.html`);
+    await page.goto(`chrome-extension://${id}/history.html`);
     await page
       .locator("#shortcuts tr")
       .first()
@@ -31,7 +31,7 @@ const assert = require("node:assert/strict");
         console.error(await page.locator("#status").innerText(), errors);
         throw e;
       });
-    assert.equal(await page.locator("#shortcuts tr").count(), 23);
+    assert.equal(await page.locator("#shortcuts tr").count(), 24);
     assert.match(await page.locator("#status").innerText(), /matches|differ/);
     const device = await worker.evaluate(
       async () =>

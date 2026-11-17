@@ -3,10 +3,10 @@ export default tseslint.config(
   { ignores: ["dist/**", "node_modules/**", "vendor/**"] },
   ...tseslint.configs.strictTypeChecked.map((c) => ({
     ...c,
-    files: ["src/**/*.ts"],
+    files: ["src/**/*.{ts,tsx}"],
   })),
   {
-    files: ["src/**/*.ts"],
+    files: ["src/**/*.{ts,tsx}"],
     languageOptions: {
       parserOptions: {
         projectService: true,

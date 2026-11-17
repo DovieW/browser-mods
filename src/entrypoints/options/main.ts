@@ -1,2 +1,2 @@
-import { initializeOptions } from "../../features/shortcut-setup/public-options";
-initializeOptions();
+import { mountOptions } from "../../features/workspace/public-options";
+mountOptions();

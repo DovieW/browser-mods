@@ -24,3 +24,12 @@ Run `npm run verify`, `npm run test:browser:packaged`, `npm run package`, and th
 ## Remaining product work
 
 Utility migrations, full desired-shortcut controls/import UX, module enablement for future features and complete history quota/eviction behavior remain on migration.md. This review completes the architecture extraction for existing behavior, not those separate feature additions. Performance measurements are a baseline with explicit limits, not proof for future workloads or long-session memory behavior. Store publication and OAuth migration have not occurred.
+
+## Workspace interaction implementation, 2026-11-17
+
+- Implemented configurable Redact popup/palette/options, bounded search, synced field-level preferences and explicit shortcut adoption, preserving current IDs/default bindings.
+- Reviewed launcher trust: private readiness channel, session token/tab validation, restricted-page fallback, focus restoration, repeat-open cleanup and tab-close session cleanup. An arbitrary web-accessible iframe cannot render the launcher or invoke its privileged worker commands without authorization.
+- Retained native backup, tab-behavior and shortcut-history views through dedicated entrypoints. All surfaces share dispatch and disabled-command gates. Interface import validates the complete envelope, saves a local recovery snapshot first, and writes settings atomically.
+- Strict TSX coverage, negative API/import fixtures and bundle assertions passed. `npm run verify`: 114 tests plus type/lint/architecture/Knip/build. Browser suites cover prior tools and the new workspace; the launcher fixture grants localhost access only in its disposable manifest.
+- [Production startup measurements](performance/workspace-2026-11-17.md) did not show a repeated threshold-crossing regression. This does not establish arbitrary large-index or long-running-job performance.
+- Remaining roadmap features, generalized offscreen/job services and feature-specific lifecycle work remain tracked; this shell does not mark them implemented.

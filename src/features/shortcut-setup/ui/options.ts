@@ -1,7 +1,10 @@
 import { popupBrowser } from "../adapters/browser";
 const port = popupBrowser();
 import { listen } from "../../../ui/dom";
-import { readShortcutSetup } from "../../../platform/messaging/shortcuts";
+import {
+  adoptShortcut,
+  readShortcutSetup,
+} from "../../../platform/messaging/shortcuts";
 import { commands } from "../../../core/actions/catalog";
 const status = document.querySelector<HTMLElement>("#status");
 const table = document.querySelector<HTMLTableSectionElement>("#shortcuts");
@@ -41,6 +44,32 @@ async function refresh(): Promise<void> {
       }
       cell.append(detail);
       row.append(cell);
+      const choice = document.createElement("td");
+      if (
+        Object.hasOwn(result.desired, name) &&
+        result.actual[name] !== result.desired[name]
+      ) {
+        const keep = document.createElement("p");
+        keep.textContent =
+          "Saved preference retained until you choose otherwise.";
+        choice.append(keep);
+        const adopt = document.createElement("button");
+        adopt.textContent = "Use this device’s assignment";
+        adopt.addEventListener("click", () => {
+          adopt.disabled = true;
+          void adoptShortcut(name)
+            .then(refresh)
+            .catch(() => {
+              if (status)
+                status.textContent = "Could not save assignment. Try again.";
+            })
+            .finally(() => {
+              adopt.disabled = false;
+            });
+        });
+        choice.append(adopt);
+      }
+      row.append(choice);
       return row;
     });
     table?.replaceChildren(...rows);
@@ -64,6 +93,14 @@ async function refresh(): Promise<void> {
 export function initializeOptions(): void {
   listen(window, "focus", () => {
     void refresh();
+  });
+  const search = document.querySelector<HTMLInputElement>("#shortcutSearch");
+  listen(search, "input", () => {
+    if (!search) return;
+    for (const row of table?.rows ?? [])
+      row.hidden = !row.textContent
+        .toLowerCase()
+        .includes(search.value.toLowerCase());
   });
   void refresh();
 }

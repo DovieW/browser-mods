@@ -29,5 +29,17 @@
   "options_ui": {
     "page": "options.html",
     "open_in_tab": true
-  }
+  },
+  "optional_permissions": ["bookmarks"],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "launcher.html",
+        "launcher.js",
+        "workspace.css",
+        "theme/*.css"
+      ],
+      "matches": ["http://*/*", "https://*/*"]
+    }
+  ]
 }

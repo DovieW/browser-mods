@@ -1,6 +1,5 @@
-import { initialize } from "../../features/shortcut-setup/public";
-import { showShortcutNotice } from "../../ui/shortcut-notice";
-document.addEventListener("DOMContentLoaded", () => {
-  void initialize();
-  void showShortcutNotice();
+import { mountWorkspace } from "../../features/workspace/public-ui";
+import { consumePaletteRequest } from "../../platform/chrome/palette";
+void consumePaletteRequest().then((palette) => {
+  mountWorkspace("popup", palette);
 });

@@ -1,5 +1,11 @@
 {
-  "entry": ["src/entrypoints/**/*.ts", "src/core/actions/catalog.ts"],
-  "project": ["src/**/*.ts"],
-  "ignoreDependencies": ["@doview/mods-shared", "@eslint/js"]
+  "entry": ["src/entrypoints/**/*.{ts,tsx}", "src/core/actions/catalog.ts"],
+  "project": ["src/**/*.{ts,tsx}"],
+  "ignoreDependencies": [
+    "@doview/mods-shared",
+    "@eslint/js",
+    "@tanstack/redact",
+    "react",
+    "react-dom"
+  ]
 }

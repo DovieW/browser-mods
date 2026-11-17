@@ -13,7 +13,7 @@ export function checkSource(root) {
       }
       if (!/\.[cm]?[jt]sx?$/.test(file)) continue;
       const name = relative(root, file).replaceAll("\\", "/");
-      if (!file.endsWith(".ts"))
+      if (!/\.tsx?$/.test(file))
         errors.push(`${name}: runtime source must be TypeScript`);
       const pure =
         name.startsWith("core/") ||
@@ -24,6 +24,7 @@ export function checkSource(root) {
         readFileSync(file, "utf8"),
         ts.ScriptTarget.Latest,
         true,
+        file.endsWith(".tsx") ? ts.ScriptKind.TSX : ts.ScriptKind.TS,
       );
       function visit(node) {
         if (ts.isTypeNode(node)) return;

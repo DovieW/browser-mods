@@ -854,9 +854,9 @@ const http = require("node:http");
       const popup = await context.newPage();
       const errors = [];
       popup.on("pageerror", (error) => errors.push(error.message));
-      await popup.goto(`chrome-extension://${id}/popup.html`);
+      await popup.goto(`chrome-extension://${id}/legacy.html`);
       await popup.locator(".shortcut-item").first().waitFor();
-      assert.equal(await popup.locator(".shortcut-item").count(), 23);
+      assert.equal(await popup.locator(".shortcut-item").count(), 24);
       assert.equal(await popup.locator("#backupTools").isVisible(), false);
       assert.equal(await popup.locator("#audioSection").isVisible(), false);
       assert.equal(
@@ -908,7 +908,7 @@ const http = require("node:http");
       "shortcut memory persists, flags missing/changed keys, and protects the saved setup",
       async () => {
         const popup = await context.newPage();
-        await popup.goto(`chrome-extension://${id}/popup.html`);
+        await popup.goto(`chrome-extension://${id}/legacy.html`);
         await popup
           .locator("#memorySummary")
           .filter({ hasText: "No saved setup" })
@@ -926,7 +926,7 @@ const http = require("node:http");
           async (key) => (await chrome.storage.sync.get(key))[key],
           key,
         );
-        assert.equal(Object.keys(original.bindings).length, 23);
+        assert.equal(Object.keys(original.bindings).length, 24);
         await popup.reload();
         await popup
           .locator("#memorySummary")
@@ -1073,7 +1073,7 @@ const http = require("node:http");
         const popup = await context.newPage();
         const errors = [];
         popup.on("pageerror", (error) => errors.push(error.message));
-        await popup.goto(`chrome-extension://${id}/popup.html`);
+        await popup.goto(`chrome-extension://${id}/legacy.html`);
         await popup
           .getByRole("button", { name: "Settings", exact: true })
           .click();

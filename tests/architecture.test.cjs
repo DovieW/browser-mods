@@ -36,6 +36,10 @@ function cruise(root) {
   return result;
 }
 for (const [name, files] of Object.entries({
+  "TSX sibling privacy is enforced": {
+    "features/a/view.tsx": "import '../b/private';",
+    "features/b/private.tsx": "export const secret=1;",
+  },
   "core cannot import UI": {
     "core/bad.ts": "import '../ui/view';",
     "ui/view.ts": "export const view=1;",

@@ -1,9 +1,11 @@
+import { authorizeLauncher } from "../features/workspace/public";
+import { commands } from "../core/actions/catalog";
 import { listenerScope } from "../platform/chrome/listeners";
 import { createShortcutService } from "../core/shortcuts/application";
 import { shortcutHistoryPort } from "../platform/storage/shortcut-history";
 export function registerShortcutHistory() {
   const scope = listenerScope();
-  const { reconcileShortcuts } = createShortcutService(
+  const { reconcileShortcuts, adoptAssignment } = createShortcutService(
     shortcutHistoryPort(chrome),
   );
   function refresh(): void {
@@ -19,7 +21,9 @@ export function registerShortcutHistory() {
         !message ||
         typeof message !== "object" ||
         !("type" in message) ||
-        message.type !== "mods.shortcuts.reconcile"
+        !["mods.shortcuts.reconcile", "mods.shortcuts.adopt"].includes(
+          String(message.type),
+        )
       )
         return false;
       if (
@@ -27,7 +31,19 @@ export function registerShortcutHistory() {
         !sender.url?.startsWith(chrome.runtime.getURL(""))
       )
         return false;
-      void reconcileShortcuts()
+      void (async () => {
+        if (!(await authorizeLauncher(sender))) throw Error("Invalid launcher");
+        if (message.type === "mods.shortcuts.adopt") {
+          if (
+            !("command" in message) ||
+            typeof message.command !== "string" ||
+            !Object.hasOwn(commands, message.command)
+          )
+            throw Error("Invalid command");
+          await adoptAssignment(message.command);
+        }
+        return reconcileShortcuts();
+      })()
         .then((value) => {
           respond({ ok: true, value });
         })
