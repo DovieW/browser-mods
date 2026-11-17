@@ -14,6 +14,8 @@ The legacy root runtime has been replaced with strict TypeScript feature modules
 
 Browser Mods is one extension. Evaluate new features against feature-admission.md without assuming separate builds. A concrete Store-policy conflict requires a product discussion, not an automatic packaging change.
 
+The user selected Redact for the redesigned extension-page UI; adoption starts with a verified real slice. The eight additional reference projects and confirmed screenshot/PDF, profile/bulk-toggle, versioned root-ZIP, single-video-file and per-tab mono requirements are captured in [the feature roadmap](feature-roadmap.md). This expands the backlog below without marking those workflows implemented or dropping earlier migrations.
+
 ## Remaining implementation
 
 1. Complete shortcut UX: explicit global unassignment, import/export with rollback, 40KiB global history eviction, 100 revisions per shortcut locally, remaining shortcut-specific adapter cases and workload coverage. Initial adapter and performance checks now exist. Current synced history keeps ten per command per device; quota pressure surfaces a failure rather than silently discarding data. Legacy snapshot UI remains separate until this conversion is finished.

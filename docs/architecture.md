@@ -49,3 +49,5 @@ Run `npm run test:performance` for disposable browser measurements and 500/1000-
 ## Runtime dependency choices
 
 See [dependency decisions](dependencies.md) before adding runtime libraries. The next recommended implementation is standard Zod for boundary validation; no validator has been installed yet. Overlay positioning, list virtualization and templating have separate revisit triggers. Favor measurable benefits and readable code rather than a zero-dependency rule or speculative size optimization.
+
+Redact is selected for the upcoming extension-page UI redesign. Existing production screens remain native until the first verified slice. Before adding TSX, extend strict typing, typed lint, import/context checks, Knip and negative fixtures to cover TSX equally; do not create an unchecked UI path. See the [UI decision](decisions/2026-11-16-ui-runtime.md) and [feature roadmap](feature-roadmap.md) for planned ownership and shared lifecycle requirements.

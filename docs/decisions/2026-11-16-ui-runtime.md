@@ -1,6 +1,6 @@
 # UI runtime comparison
 
-Status: evaluation completed; recommendation for the next UI redesign, not production adoption.
+Status: Redact selected by the user for the next UI redesign; production adoption has not started.
 
 ## Problem and scope
 
@@ -10,9 +10,9 @@ This remains one extension. The separate builds in `experiments/ui-runtime/` are
 
 ## Recommendation
 
-Prefer **React as the starting component runtime for a substantial UI redesign**, with established accessible controls when needed. Correct behavior is required. Prioritize measured responsiveness, startup, memory and idle cost; among choices with comparable performance, prefer lower compatibility and maintenance risk. Bundle size is useful evidence about potential cost, not a deciding score by itself.
+Use **Redact for the redesigned extension-page UI**, following the user's selection. Correct behavior is required. Prioritize measured responsiveness, startup, memory and idle cost; among choices with comparable performance, prefer lower compatibility and maintenance risk. This choice does not change those priorities or establish that Redact is universally faster.
 
-React's tested interactions and large-list performance were competitive despite its larger bundle. It passed the tested Radix interactions without a replacement-runtime compatibility layer. These results support it as the lower-risk component starting point, not a claim that it is universally faster or has lower memory use. Monitor its startup and memory costs in the actual redesign.
+Redact's tested interactions, native dialog and Radix Dialog integration passed, including the rapid Escape probe. Direct esbuild aliases worked without adding Vite or a server, and build metadata confirmed native React was absent from its output. Carry that verified integration into the first real UI slice. React remains a measured reference and a possible fallback for an identified unsupported dependency, not the selected renderer.
 
 Keep the current native DOM production UI until a redesigned slice has an agreed design and passes its own behavior/performance checks. Native DOM remains a strong performance baseline. This experiment does not establish a speedup from replacing it. Use native controls where they meet the workflow; component adoption should reduce UI maintenance work.
 
@@ -20,7 +20,7 @@ Preact's smaller output does not justify preferring it here. Its 1,000-row warm-
 
 **Do not adopt the tested Preact/Radix Dialog combination yet.** The rapid open/Escape probe dropped key presses; delayed retries succeeded. That is consistent with passive-effect/listener readiness, not proof of the exact cause. Do not hide it with an arbitrary production delay or patch framework internals. Recheck a fixed upstream version or select another tested control implementation when the actual design needs it.
 
-Redact successfully supports this fixture and its Radix integration through direct esbuild aliases. Defer it unless it demonstrates a material runtime benefit over React that justifies its newer implementation and compatibility differences. Extra React-shaped APIs over Preact do not by themselves justify replacing React. Preact and Redact remain evaluated alternatives, not the default choices. No candidate is universally fastest in these measurements. [Redact's documented compatibility limits](https://tanstack.com/redact/latest/docs/compatibility), [Radix's accessible primitives](https://www.radix-ui.com/primitives/docs/overview/introduction).
+Redact's newer implementation and documented compatibility differences remain engineering constraints. Pin the package, test every adopted control/adapter combination, and benchmark the actual screens. React-facing imports and types do not mean shipping both runtimes: production build checks must prove the selected renderer is the only one included. Do not disable Redact features merely to win a size comparison. [Redact's compatibility limits](https://tanstack.com/redact/latest/docs/compatibility), [Radix's accessible primitives](https://www.radix-ui.com/primitives/docs/overview/introduction).
 
 The result does not require TanStack Start, Vite, global state management, routing or replacing domain/storage architecture. Hotkeys and Form remain separate evaluations tied to actual UI workflows. Virtual and Pacer retain their feature-specific triggers.
 
