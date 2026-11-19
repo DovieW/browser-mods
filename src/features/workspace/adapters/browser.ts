@@ -46,7 +46,12 @@ export function workspaceBrowser() {
         active: true,
         currentWindow: true,
       });
-      return { title: t?.title ?? "Current tab", pinned: t?.pinned ?? false };
+      return {
+        title: t?.title ?? "Current tab",
+        pinned: t?.pinned ?? false,
+        id: t?.id,
+        url: t?.url ?? "",
+      };
     },
     async tabs() {
       return (await chrome.tabs.query({ currentWindow: true })).map((t) => ({

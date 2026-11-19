@@ -1,3 +1,7 @@
+import {
+  PlaylistDurationCard,
+  playlistTab,
+} from "../../playlist-duration/public-ui";
 import { commandErrorMessage } from "../../../core/actions/errors";
 import type { OptionsProps } from "./options";
 import type { ComponentType } from "react";
@@ -60,13 +64,21 @@ function App({
       window.removeEventListener("focus", refresh);
     };
   }, [port]);
-  const [current, setCurrent] = useState({
+  const [current, setCurrent] = useState<
+    Awaited<ReturnType<WorkspacePort["currentTab"]>>
+  >({
     title: "Current tab",
     pinned: false,
+    id: undefined,
+    url: "",
   });
   useEffect(() => {
     if (mode !== "options") void port.currentTab().then(setCurrent).catch(fail);
   }, [mode, port]);
+  const playlist =
+    mode === "popup" && !prefs.disabled.includes("Media")
+      ? playlistTab(current.url)
+      : null;
   const [palette, setPalette] = useState(mode === "launcher" || initialPalette);
   const input = useRef<HTMLInputElement>(null),
     connection = useRef<MessagePort | null>(null);
@@ -460,6 +472,14 @@ function App({
               </button>
             )}
           </div>
+          {playlist && current.id !== undefined && !query && !scope && (
+            <PlaylistDurationCard
+              key={`${current.id}:${playlist.page}:${playlist.list}`}
+              target={playlist}
+              tabId={current.id}
+              openPlaylist={port.open}
+            />
+          )}
           {!finding && prefs.layout === "favorites" && <h2>Favorites</h2>}
           <div id="results" role="listbox" aria-label="Available actions">
             {(prefs.layout === "sections" && !finding

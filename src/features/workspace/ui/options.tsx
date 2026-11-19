@@ -347,7 +347,7 @@ export function Options({
                       ? "Tab, group and window commands. Recent-tab history remains available to the shared shortcut service."
                       : s === "Clipboard"
                         ? "Copy tab URLs and visible-page screenshots."
-                        : "Pause media on demand; site access is requested when needed."}
+                        : "Pause media on demand and show YouTube playlist duration in the toolbar popup."}
                   </p>
                 </div>
               ))}
