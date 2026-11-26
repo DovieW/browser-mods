@@ -27,7 +27,14 @@ const path = require("node:path");
     await popup.locator(".result").first().waitFor();
     assert.equal(await popup.locator(".result").count(), 4);
     await popup.locator("#search").fill("screenshot");
-    assert.equal(await popup.locator(".result").count(), 1);
+    const screenshotCommand = popup.getByRole("option", {
+      name: /Copy a screenshot of the visible page/,
+    });
+    const screenshotSetting = popup.getByRole("option", {
+      name: /Show page URL on screenshots/,
+    });
+    await screenshotCommand.waitFor();
+    await screenshotSetting.waitFor();
     await popup.locator("#search").press("ArrowDown");
     assert.equal(await popup.locator("[aria-selected=true]").count(), 1);
     await popup.locator("#search").fill("");
@@ -58,7 +65,8 @@ const path = require("node:path");
     await options.getByRole("button", { name: "Mods", exact: true }).click();
     await options.getByLabel("Clipboard", { exact: true }).uncheck();
     await popup.locator("#search").fill("screenshot");
-    assert.equal(await popup.locator(".result").count(), 0);
+    await screenshotCommand.waitFor({ state: "hidden" });
+    await screenshotSetting.waitFor();
     await options
       .getByRole("button", { name: "Appearance & navigation", exact: true })
       .click();
