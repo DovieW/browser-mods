@@ -41,6 +41,16 @@ Bound total pixels, temporary blobs and composition memory; use tiled/paginated 
 
 Sources: [tabs/capture limits](https://developer.chrome.com/docs/extensions/reference/api/tabs), [debugger](https://developer.chrome.com/docs/extensions/reference/api/debugger), [CDP Page](https://chromedevtools.github.io/devtools-protocol/tot/Page/).
 
+### Attach a screenshot to the last ChatGPT chat
+
+**Proposed follow-up.** Add a separate, assignable shortcut that captures the visible page using the same PNG and optional URL label as **Copy screenshot**. Capture the source before switching tabs. Attach one image to the draft in the most recently interacted-with ChatGPT conversation, then bring that tab forward. Preserve any draft text or attachments. Leave message submission to the user.
+
+A destination qualifies only after actual user interaction in that conversation within the last 15 minutes. An open or automatically refreshed ChatGPT tab alone does not qualify. Track tab, conversation identity, and interaction time locally for the current browser session. Recheck the tab, conversation, browser profile context, and attachment availability before handing over the image. Scope any requested site access to ChatGPT.
+
+On confirmed attachment, leave the system clipboard untouched. If no eligible conversation exists or the attachment cannot be confirmed, copy the same PNG to the clipboard and surface a toolbar warning badge with the reason in the popup. Avoid retrying an uncertain attachment in a different conversation. If the clipboard write also fails, report that failure separately. Make it clear during shortcut setup that attaching an image can transfer it to ChatGPT before the user submits the draft.
+
+Acceptance covers stale or closed chats, conversation changes in the same tab, unsent draft preservation, unchanged clipboard on success, and accurate fallback feedback. Verify attachment against ChatGPT before relying on it, since the destination composer is owned by the site.
+
 ### Extension profiles and versioned ZIPs
 
 The manager reads installed extension state on opening, then uses management events instead of polling. A profile records desired extension IDs, with always-on protection and Browser Mods excluded from disabling. Applying a profile shows its concrete changes; missing or policy-controlled extensions are reported, and failures do not erase the saved profile. Retain the actual pre-apply device state for explicit restore. Verify Chrome's user-gesture requirements through our UI/client/worker route. Sync profile definitions and deliberate preference edits, not unrequested activation changes on another device.
