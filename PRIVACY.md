@@ -28,4 +28,4 @@ Optional media access can be removed using **Backup → Revoke media**. Capture 
 
 ## Contact and updates
 
-For questions, use [the project issue tracker](https://github.com/DovieW/simple-shortcuts/issues). Do not include private URLs, screenshots, or credentials in a public issue. Updates to this policy will be published in this repository when the extension's data practices change.
+For questions, use [the project issue tracker](https://github.com/DovieW/browser-mods/issues). Do not include private URLs, screenshots, or credentials in a public issue. Updates to this policy will be published in this repository when the extension's data practices change.
