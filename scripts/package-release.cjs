@@ -20,18 +20,18 @@ const { execFileSync } = require("node:child_process");
   const files = await fs.readdir(source);
   const output = path.resolve(
     process.argv[2] ||
-      path.join(os.tmpdir(), `dovies-browser-mods-release-${manifest.version}`),
+      path.join(os.tmpdir(), `browser-mods-release-${manifest.version}`),
   );
   await fs.mkdir(output, { recursive: true });
   const stage = await fs.mkdtemp(
-    path.join(os.tmpdir(), "dovies-browser-mods-package-"),
+    path.join(os.tmpdir(), "browser-mods-package-"),
   );
   try {
     for (const file of files)
       await fs.cp(path.join(source, file), path.join(stage, file), {
         recursive: true,
       });
-    const name = `dovies-browser-mods-v${manifest.version}.zip`;
+    const name = `browser-mods-v${manifest.version}.zip`;
     execFileSync(
       "zip",
       [

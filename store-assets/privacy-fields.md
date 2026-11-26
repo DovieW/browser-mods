@@ -58,7 +58,7 @@ Review the exact certification wording yourself before selecting the checkboxes.
 
 ## Privacy policy URL
 
-https://github.com/DovieW/simple-shortcuts/blob/v0.7.0/PRIVACY.md
+https://github.com/DovieW/browser-mods/blob/v0.7.0/PRIVACY.md
 
 ## Reviewer test instructions
 
