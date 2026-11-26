@@ -11,11 +11,7 @@ export type OptionsProps = {
   actions: Result[];
 };
 import { useEffect, useState } from "react";
-import {
-  parsePreferences,
-  validatePreferences,
-  type Preferences,
-} from "../domain/preferences";
+import { parsePreferences, type Preferences } from "../domain/preferences";
 import type { WorkspacePort } from "../adapters/browser";
 import { pages, planned, settings, type Result } from "./model";
 import { sections } from "../domain/preferences";
@@ -349,6 +345,19 @@ export function Options({
                         ? "Copy tab URLs and visible-page screenshots."
                         : "Pause media on demand and show YouTube playlist duration in the toolbar popup."}
                   </p>
+                  {s === "Clipboard" && (
+                    <label className="check">
+                      <input
+                        id="showScreenshotUrl"
+                        type="checkbox"
+                        checked={prefs.showScreenshotUrl}
+                        onChange={(e) => {
+                          void save("showScreenshotUrl", e.target.checked);
+                        }}
+                      />
+                      Show page URL on screenshots
+                    </label>
+                  )}
                 </div>
               ))}
               <button
@@ -452,8 +461,6 @@ export function Options({
                           !data.preferences ||
                           typeof data.preferences !== "object"
                         )
-                          throw Error("Invalid settings backup.");
-                        if (!validatePreferences(data.preferences))
                           throw Error("Invalid settings backup.");
                         await port.importPreferences(data.preferences);
                         setNotice("Imported settings.");

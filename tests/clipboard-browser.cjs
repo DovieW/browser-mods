@@ -243,6 +243,39 @@ const { execFileSync } = require("node:child_process");
       `PASS ${native ? "native shortcut" : "post-grant capture"} copies a pasteable PNG of the visible page without a helper window`,
     );
 
+    function pixel(data, info, x, y) {
+      const start = (y * info.width + x) * info.channels;
+      return [...data.subarray(start, start + 3)];
+    }
+    assert.deepEqual(pixel(data, info, 791, 590), [0, 0, 0]);
+    assert.ok(
+      [...Array(24).keys()].some((y) =>
+        [...Array(240).keys()].some(
+          (x) => pixel(data, info, x + 554, y + 570).join() === "255,235,0",
+        ),
+      ),
+      "Default URL stamp includes yellow lettering",
+    );
+
+    const settings = await context.newPage();
+    await settings.goto(`chrome-extension://${id}/options.html#Mods`);
+    const stampSetting = settings.getByRole("checkbox", {
+      name: "Show page URL on screenshots",
+    });
+    assert.equal(await stampSetting.isChecked(), true);
+    await stampSetting.uncheck();
+    await settings.getByText("Saved locally.", { exact: false }).waitFor();
+    await settings.close();
+    await page.bringToFront();
+    await run("copy-screenshot");
+    const plain = await sharp(Buffer.from((await paste()).files[0].bytes))
+      .raw()
+      .toBuffer({ resolveWithObject: true });
+    assert.deepEqual(pixel(plain.data, plain.info, 791, 590), [20, 120, 220]);
+    console.log(
+      "PASS screenshot URL stamp is on by default and can be disabled in options",
+    );
+
     await run("copy-url");
     assert.equal((await paste()).text, base + "/one");
     const clipboardContexts = await worker.evaluate(() =>

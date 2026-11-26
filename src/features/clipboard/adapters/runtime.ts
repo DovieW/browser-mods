@@ -2,8 +2,18 @@ import type { BrowserPort } from "../../../platform/chrome/browser";
 import type { CommandContext, Tab } from "../../../contracts/browser";
 import { commandError, commandErrorCode } from "../../../core/actions/errors";
 import { succeeded } from "../../../contracts/action-messages";
+function screenshotUrl(raw: string): string {
+  const url = URL.parse(raw);
+  if (!url || (url.protocol !== "https:" && url.protocol !== "http:"))
+    return "";
+  url.username = "";
+  url.password = "";
+  return url.href.length > 240 ? url.href.slice(0, 239) + "…" : url.href;
+}
+
 export function createClipboard(
   chrome: Pick<BrowserPort, "tabs" | "runtime" | "offscreen">,
+  showScreenshotUrl: () => Promise<boolean>,
 ) {
   let creatingOffscreen: Promise<void> | undefined;
   async function writeClipboard(type: string, payload: Record<string, string>) {
@@ -74,6 +84,7 @@ export function createClipboard(
     if (!tab) throw commandError("no_tab");
     if (invokedTab && (invokedTab.id !== tab.id || invokedTab.url !== tab.url))
       throw commandError("screenshot_changed");
+    const stampUrl = await showScreenshotUrl();
     await assertScreenshotTarget(tab);
     let dataUrl;
     try {
@@ -110,7 +121,8 @@ export function createClipboard(
     await assertScreenshotTarget(tab);
     if (!dataUrl.startsWith("data:image/png;base64,"))
       throw commandError("screenshot_failed");
-    await writeClipboard("copy-image", { dataUrl });
+    const url = stampUrl ? screenshotUrl(tab.url) : "";
+    await writeClipboard("copy-image", url ? { dataUrl, url } : { dataUrl });
   }
   return { copyUrls, copyScreenshot };
 }

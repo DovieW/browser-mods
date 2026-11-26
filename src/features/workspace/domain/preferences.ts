@@ -5,6 +5,7 @@ export const preferenceDefaults = {
   placement: "toolbar" as const,
   searchMode: "scoped" as const,
   includeDisabled: false,
+  showScreenshotUrl: true,
   pins: ["copy-url", "copy-screenshot", "switch-to-last-tab", "pause-all-tabs"],
   hidden: [] as string[],
   order: [] as string[],
@@ -36,6 +37,11 @@ export function parsePreferences(value: unknown): Preferences {
   }
   if ("includeDisabled" in value && typeof value.includeDisabled === "boolean")
     p.includeDisabled = value.includeDisabled;
+  if (
+    "showScreenshotUrl" in value &&
+    typeof value.showScreenshotUrl === "boolean"
+  )
+    p.showScreenshotUrl = value.showScreenshotUrl;
   for (const key of [
     "pins",
     "hidden",
@@ -62,15 +68,16 @@ export function actionSection(id: string): Section {
       ? "Media"
       : "Tabs";
 }
-export function validatePreferences(value: unknown): value is Preferences {
+export function validatePreferences(value: unknown): boolean {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
   const normalized = parsePreferences(value);
   return (
     Object.keys(normalized).every(
       (k) =>
-        Object.hasOwn(value, k) &&
-        JSON.stringify(Reflect.get(value, k)) ===
-          JSON.stringify(Reflect.get(normalized, k)),
+        (k === "showScreenshotUrl" && !Object.hasOwn(value, k)) ||
+        (Object.hasOwn(value, k) &&
+          JSON.stringify(Reflect.get(value, k)) ===
+            JSON.stringify(Reflect.get(normalized, k))),
     ) && Object.keys(value).every((k) => Object.hasOwn(normalized, k))
   );
 }

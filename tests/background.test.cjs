@@ -797,7 +797,28 @@ test("screenshot captures the active tab once and sends PNG without storing imag
     h.calls.find((call) => call[0] === "message")[1].dataUrl,
     "data:image/png;base64,test",
   );
+  assert.equal(
+    h.calls.find((call) => call[0] === "message")[1].url,
+    "https://example.test/",
+  );
   assert.equal(JSON.stringify(h.session).includes("data:image"), false);
+});
+
+test("screenshot labels omit embedded credentials and bound long URLs", async () => {
+  const h = createHarness({
+    tabs: [
+      {
+        id: 1,
+        active: true,
+        url: "https://user:secret@example.test/" + "a".repeat(400),
+      },
+    ],
+  });
+  await h.run("copy-screenshot");
+  const url = h.calls.find((call) => call[0] === "message")[1].url;
+  assert.equal(url.length, 240);
+  assert.match(url, /^https:\/\/example\.test\//);
+  assert.ok(url.endsWith("…"));
 });
 
 test("screenshot rejects changed active tabs and navigation without writing the clipboard", async () => {

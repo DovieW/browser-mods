@@ -22,6 +22,11 @@ test("UI preferences reject invalid enums and bound untrusted arrays", () => {
   );
   assert.equal(c.validatePreferences({ layout: "favorites" }), false);
   assert.equal(c.validatePreferences(c.parsePreferences(null)), true);
+  const olderBackup = c.parsePreferences(null);
+  delete olderBackup.showScreenshotUrl;
+  assert.equal(c.validatePreferences(olderBackup), true);
+  assert.equal(c.parsePreferences(olderBackup).showScreenshotUrl, true);
+
   assert.equal(
     c.validatePreferences({
       ...c.parsePreferences(null),

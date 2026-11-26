@@ -2,6 +2,7 @@ import {
   authorizeLauncher,
   openPalette,
   readPreferences,
+  readScreenshotUrlPreference,
   actionSection,
 } from "../features/workspace/public";
 import { actionRegistry } from "../core/actions/registry";
@@ -36,7 +37,10 @@ export function createWorker(chrome: BrowserPort) {
     moveAllGroups,
     cycleGroups,
   } = tabs;
-  const { copyUrls, copyScreenshot } = createClipboard(chrome);
+  const { copyUrls, copyScreenshot } = createClipboard(
+    chrome,
+    readScreenshotUrlPreference,
+  );
   const { pauseAllTabs } = createMedia(chrome);
   let commandQueue: Promise<unknown> = Promise.resolve();
   function enqueueCommand<T>(task: () => Promise<T>): Promise<T> {

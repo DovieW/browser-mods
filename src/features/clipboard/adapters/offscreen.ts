@@ -1,3 +1,4 @@
+import { stampScreenshot } from "./screenshot-stamp";
 import { present } from "../../../core/present";
 
 let releaseCopiedImage: (() => void) | undefined;
@@ -17,6 +18,7 @@ export function registerOffscreen() {
       type?: unknown;
       dataUrl?: unknown;
       text?: unknown;
+      url?: unknown;
     };
     if (message.target !== "offscreen" || sender.id !== chrome.runtime.id)
       return;
@@ -28,7 +30,9 @@ export function registerOffscreen() {
         respond({ ok: false });
         return;
       }
-      void copyImage(message.dataUrl).then(
+      const url =
+        typeof message.url === "string" ? message.url.slice(0, 240) : "";
+      void copyImage(message.dataUrl, url).then(
         (ok) => {
           respond({ ok });
         },
@@ -60,7 +64,7 @@ export function registerOffscreen() {
   });
 }
 
-async function copyImage(dataUrl: string) {
+async function copyImage(dataUrl: string, url: string) {
   clearCopiedImage();
   let frame: HTMLIFrameElement | undefined;
   let objectUrl: string | undefined;
@@ -72,7 +76,9 @@ async function copyImage(dataUrl: string) {
   };
   try {
     const blob = await (await fetch(dataUrl)).blob();
-    objectUrl = URL.createObjectURL(blob);
+    objectUrl = URL.createObjectURL(
+      url ? await stampScreenshot(blob, url) : blob,
+    );
     frame = document.createElement("iframe");
     const loaded = new Promise((resolve, reject) => {
       present(frame).onload = resolve;

@@ -42,6 +42,11 @@ export const settings = [
     page: "Shortcuts",
     control: "shortcut-settings",
   },
+  {
+    label: "Show page URL on screenshots",
+    page: "Mods",
+    control: "showScreenshotUrl",
+  },
   { label: "Enable or disable mods", page: "Mods", control: "mod-settings" },
   {
     label: "Site permissions and access",

@@ -33,7 +33,7 @@ Full Page Screen Capture's public README says its Store release uses a private b
 
 ### Full image clipboard and large-page PDF
 
-Keep the existing visible-page screenshot command's behavior and ID. Add a distinct full-page copy action in the typed catalog, reusing active-tab/navigation safeguards and clipboard infrastructure. The new workflow must capture the full intended page, then copy the complete bitmap automatically. PDF is a real first-version output for larger pages, not an indefinite follow-up. Keep PDF and composition code out of ordinary popup startup.
+Keep the existing visible-page screenshot command's ID. Its default-on page URL label is configurable under Options → Mods → Clipboard. Reuse the same setting and label for full-page clipboard captures. Add a distinct full-page copy action in the typed catalog, reusing active-tab/navigation safeguards and clipboard infrastructure. The new workflow must capture the full intended page, then copy the complete bitmap automatically. PDF is a real first-version output for larger pages, not an indefinite follow-up. Keep PDF and composition code out of ordinary popup startup.
 
 Prototype capture paths before selecting one: scrolling/stitching through `captureVisibleTab`, versus an explicitly activated debugger/CDP capture if its performance gain warrants the privilege and interaction cost. The documented visible-tab API allows only two captures per second, so do not promise an arbitrarily long scroll-and-stitch capture is instantaneous. CDP exposes screenshot/PDF operations, but their behavior through the extension debugger API must be verified on supported Chrome versions before adoption; it is not a guaranteed shortcut to every page/output.
 
