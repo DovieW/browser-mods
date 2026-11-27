@@ -79,13 +79,7 @@ export function microsoftForm(
   };
 
   const immediate = inspect();
-  if (
-    immediate ||
-    action === "submit" ||
-    action === "focus" ||
-    !document.hasFocus()
-  )
-    return immediate;
+  if (immediate || action === "submit" || action === "focus") return immediate;
 
   return new Promise<MicrosoftStage | null>((resolve) => {
     const observer = new MutationObserver(probe);
@@ -96,11 +90,15 @@ export function microsoftForm(
       document.removeEventListener("input", changed);
       document.removeEventListener("change", changed);
       window.removeEventListener("pagehide", stop);
-      window.removeEventListener("blur", stop);
+      window.removeEventListener("focus", probe);
+      window.removeEventListener("blur", onBlur);
       resolve(stage);
     }
     function stop() {
       finish(null);
+    }
+    function onBlur() {
+      if (action === "wait") stop();
     }
     function probe() {
       const stage = inspect();
@@ -123,6 +121,7 @@ export function microsoftForm(
     document.addEventListener("input", changed);
     document.addEventListener("change", changed);
     window.addEventListener("pagehide", stop, { once: true });
-    window.addEventListener("blur", stop, { once: true });
+    window.addEventListener("focus", probe);
+    window.addEventListener("blur", onBlur);
   });
 }

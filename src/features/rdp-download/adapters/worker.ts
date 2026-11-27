@@ -5,6 +5,7 @@ import {
   microsoftAccountOrigin,
   portalAddress,
   preferenceKey,
+  readPreferences,
   runPrefix,
   type Portal,
   type Preferences,
@@ -405,6 +406,29 @@ export function registerRdpHelper() {
     });
   }
 
+  function queuePage(id: number, url: string) {
+    const previous = jobs.get(id) ?? Promise.resolve();
+    const next = previous.then(() => handlePage(id, url)).catch(() => {});
+    jobs.set(id, next);
+    void next.then(() => {
+      if (jobs.get(id) === next) jobs.delete(id);
+    });
+  }
+  async function resumeMicrosoft(tabId?: number) {
+    const { enabled, nativeAutofill } = await prefs;
+    if (!enabled || !nativeAutofill) return;
+    await restored;
+    const tab =
+      tabId === undefined
+        ? (
+            await chrome.tabs.query({ active: true, lastFocusedWindow: true })
+          )[0]
+        : await chrome.tabs.get(tabId);
+    if (!tab?.id || !tab.url || !ownedTabs.has(tab.id) || jobs.has(tab.id))
+      return;
+    if (portalAddress(tab.url)?.origin === microsoftAccountOrigin)
+      queuePage(tab.id, tab.url);
+  }
   scope.listen(chrome.tabs.onUpdated, (id, change, tab) => {
     if (
       change.status !== "complete" ||
@@ -413,13 +437,14 @@ export function registerRdpHelper() {
         (!settings.enabled || (!settings.portal && !settings.policyOrigin)))
     )
       return;
-    const url = tab.url;
-    const previous = jobs.get(id) ?? Promise.resolve();
-    const next = previous.then(() => handlePage(id, url)).catch(() => {});
-    jobs.set(id, next);
-    void next.then(() => {
-      if (jobs.get(id) === next) jobs.delete(id);
-    });
+    queuePage(id, tab.url);
+  });
+  scope.listen(chrome.tabs.onActivated, ({ tabId }) => {
+    if (settings?.nativeAutofill) void resumeMicrosoft(tabId).catch(() => {});
+  });
+  scope.listen(chrome.windows.onFocusChanged, (windowId) => {
+    if (windowId !== chrome.windows.WINDOW_ID_NONE && settings?.nativeAutofill)
+      void resumeMicrosoft().catch(() => {});
   });
   scope.listen(chrome.tabs.onRemoved, (id) => {
     if (settings && !settings.portal) return;
@@ -430,9 +455,21 @@ export function registerRdpHelper() {
       .catch(() => {});
   });
   scope.listen(chrome.storage.onChanged, (changes, area) => {
-    if (area !== "local" || !changes[preferenceKey]) return;
+    const change = changes[preferenceKey];
+    if (area !== "local" || !change) return;
+    const previous = readPreferences(change.oldValue);
+    const next = readPreferences(change.newValue);
+    const samePortal =
+      previous.enabled &&
+      next.enabled &&
+      previous.policyOrigin === next.policyOrigin &&
+      previous.portal?.origin === next.portal?.origin &&
+      previous.portal?.path === next.portal?.path &&
+      previous.portal?.desktop === next.portal?.desktop &&
+      previous.portal?.account === next.portal?.account;
     prefs = (async () => {
       await restored;
+      if (samePortal) return configured();
       const keys = storedRuns(await chrome.storage.session.get(null)).map(
         ([key]) => key,
       );
@@ -440,6 +477,8 @@ export function registerRdpHelper() {
       ownedTabs.clear();
       return configured();
     })().catch(() => ({ enabled: false }));
+    if (samePortal && next.nativeAutofill && !previous.nativeAutofill)
+      void resumeMicrosoft().catch(() => {});
   });
   scope.listen(chrome.permissions.onAdded, watchDownloads);
   scope.listen(chrome.permissions.onRemoved, watchDownloads);

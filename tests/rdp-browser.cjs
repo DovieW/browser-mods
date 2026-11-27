@@ -272,7 +272,7 @@ const launch = "/f5vdi/rdp/launch/Common/test-desktop";
           [key]: {
             enabled: true,
             policyOrigin: origin,
-            nativeAutofill: true,
+            nativeAutofill: false,
             portal: {
               origin,
               path: pathname,
@@ -315,6 +315,19 @@ const launch = "/f5vdi/rdp/launch/Common/test-desktop";
     await helper.goto(portal + "/my.policy?different");
     await helper.getByText("Updated policy").waitFor();
     await helper.goto(microsoft + "/fixture/saml2");
+    await helper.getByText("Sign in", { exact: true }).waitFor();
+    await popup.bringToFront();
+    await worker.evaluate(async (key) => {
+      const previous = (await chrome.storage.local.get(key))[key];
+      await chrome.storage.local.set({
+        [key]: { ...previous, nativeAutofill: true },
+      });
+    }, preferenceKey);
+    assert.equal(
+      await helper.locator("body").getAttribute("data-native-calls"),
+      null,
+    );
+    await helper.bringToFront();
     await helper.getByText("Verify your identity").waitFor({ timeout: 12000 });
     assert.equal(
       await helper.locator("body").getAttribute("data-native-calls"),
