@@ -81,6 +81,37 @@ export function registerRdpHelper() {
     );
   };
 
+  async function recoverLaunchError(
+    portal: Portal,
+    id: number,
+    url: string,
+    previous: Run | undefined,
+  ) {
+    if (previous?.restarted && previous.phase !== "downloaded") return;
+    const denied = await chrome.scripting
+      .executeScript({
+        target: { tabId: id },
+        func: () => {
+          const navigation = performance.getEntriesByType("navigation")[0] as
+            PerformanceNavigationTiming | undefined;
+          return navigation?.responseStatus === 403;
+        },
+      })
+      .then(([entry]) => entry?.result)
+      .catch((error: unknown) => {
+        // Chrome's generated HTTP error document cannot run extension scripts.
+        return (
+          error instanceof Error && /is showing error page/i.test(error.message)
+        );
+      });
+    if (!denied || !(await stillEnabled(portal, id, url))) return;
+    await write(id, { phase: "waiting", restarted: true });
+    if (!(await stillEnabled(portal, id, url))) return;
+    const tab = await chrome.tabs.get(id);
+    if (tab.url === url && !tab.pendingUrl)
+      await chrome.tabs.update(id, { url: portal.origin + "/" });
+  }
+
   async function handlePage(id: number, url: string) {
     const { enabled, portal } = await prefs;
     if (!enabled || !portal) return;
@@ -99,6 +130,13 @@ export function registerRdpHelper() {
     if (!(await permitted(portal))) return;
 
     const previous = await readRdpRun(id);
+    if (
+      address.pathname.startsWith("/f5vdi/rdp/launch/") &&
+      address.pathname !== "/f5vdi/rdp/launch/"
+    ) {
+      await recoverLaunchError(portal, id, url, previous);
+      return;
+    }
     if (previous && previous.phase !== "waiting") {
       const expired =
         previous.phase === "requested" &&

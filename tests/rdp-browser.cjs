@@ -8,6 +8,7 @@ const portal = "https://remote.test";
 const microsoft = "https://login.microsoft.com";
 const preferenceKey = "mods.rdp.preferences";
 const webtop = "/vdesk/webtop.eui";
+const launch = "/f5vdi/rdp/launch/Common/test-desktop";
 
 (async () => {
   const fixture = await fs.mkdtemp(path.join(os.tmpdir(), "mods-rdp-"));
@@ -40,6 +41,8 @@ const webtop = "/vdesk/webtop.eui";
     let restarts = 0;
     await context.route(portal + "/**", async (route) => {
       const { pathname, search } = new URL(route.request().url());
+      if (pathname === launch && search !== "?ok")
+        return route.fulfill({ status: 403, body: "" });
       if (pathname === "/desktop.rdp") {
         requests++;
         return route.fulfill({
@@ -137,6 +140,7 @@ const webtop = "/vdesk/webtop.eui";
     await recovery.reload();
     await recovery.getByRole("link", { name: "Work Desktop" }).waitFor();
     assert.equal(requests, 1);
+    await recovery.close();
 
     const ambiguous = await context.newPage();
     await ambiguous.goto(portal + webtop + "?ambiguous");
@@ -152,8 +156,31 @@ const webtop = "/vdesk/webtop.eui";
       { timeout: 15_000 },
     );
     assert.equal(requests, 1);
+    const denied = await context.newPage();
+    await denied.goto(portal + launch + "?ok");
+    assert.equal(await denied.locator("body").innerText(), "Unknown");
+    assert.equal(restarts, 1);
+    await denied.goto(portal + launch).catch((error) => {
+      if (!/ERR_HTTP_RESPONSE_CODE_FAILURE|interrupted/.test(String(error)))
+        throw error;
+    });
+    await denied.waitForURL(portal + "/my.policy", { timeout: 5000 });
+    assert.equal(restarts, 2);
+    const deniedAgain = await denied.goto(portal + launch).catch((error) => {
+      if (!String(error).includes("ERR_HTTP_RESPONSE_CODE_FAILURE"))
+        throw error;
+    });
+    assert.equal(deniedAgain?.status() ?? 403, 403);
+    await denied.getByText("HTTP ERROR 403").waitFor();
+    assert.equal(restarts, 2);
+    await denied.goto(portal + "/my.policy");
+    await denied.getByRole("link", { name: "I Accept" }).click();
+    const reauthenticated = denied.waitForEvent("download", { timeout: 8000 });
+    await denied.getByRole("link", { name: "Finish manual sign-in" }).click();
+    assert.equal(await (await reauthenticated).failure(), null);
+    assert.equal(requests, 2);
     console.log(
-      "PASS RDP default, popup opt-out, sign-out recovery, manual MFA handoff, late desktop control, single download, and ambiguous control",
+      "PASS RDP default, opt-out, sign-out and launch error recovery, bounded restart, manual MFA, and download deduplication",
     );
   } finally {
     await context.close();
