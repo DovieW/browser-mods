@@ -43,6 +43,11 @@ const launch = "/f5vdi/rdp/launch/Common/test-desktop";
       const { pathname, search } = new URL(route.request().url());
       if (pathname === launch && search !== "?ok")
         return route.fulfill({ status: 403, body: "" });
+      if (pathname === "/accept")
+        return route.fulfill({
+          contentType: "text/html",
+          body: `<script>location.replace("${microsoft}/fixture");</script>`,
+        });
       if (pathname === "/desktop.rdp") {
         requests++;
         return route.fulfill({
@@ -63,7 +68,8 @@ const launch = "/f5vdi/rdp/launch/Common/test-desktop";
       const pages = {
         "/vdesk/hangup.php3":
           '<h1>Your session is finished.</h1><a href="/">click here.</a>',
-        "/my.policy": `<a href="${microsoft}/fixture">I Accept</a>`,
+        "/my.policy": `<p>${search === "?different" ? "Updated policy" : "For authorized users only. Your activities may be monitored. You consent to such monitoring."}</p>
+          <a href="/accept">I Accept</a><a href="/">I Don't Accept</a>`,
         [webtop]:
           search === "?ambiguous"
             ? '<a href="/desktop.rdp">Work Desktop</a><a href="/desktop.rdp">Work Desktop</a>'
@@ -178,6 +184,21 @@ const launch = "/f5vdi/rdp/launch/Common/test-desktop";
     const reauthenticated = denied.waitForEvent("download", { timeout: 8000 });
     await denied.getByRole("link", { name: "Finish manual sign-in" }).click();
     assert.equal(await (await reauthenticated).failure(), null);
+    assert.equal(requests, 2);
+    await worker.evaluate(
+      ({ key, origin }) =>
+        chrome.storage.local.set({
+          [key]: { enabled: true, policyOrigin: origin },
+        }),
+      { key: preferenceKey, origin: portal },
+    );
+    const policy = await context.newPage();
+    await policy.goto(portal + "/my.policy?different");
+    await policy.getByText("Updated policy").waitFor();
+    await policy.goto(portal + "/my.policy").catch((error) => {
+      if (!String(error).includes("interrupted")) throw error;
+    });
+    await policy.waitForURL(microsoft + "/fixture");
     assert.equal(requests, 2);
     console.log(
       "PASS RDP default, opt-out, sign-out and launch error recovery, bounded restart, manual MFA, and download deduplication",

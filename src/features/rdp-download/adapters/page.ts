@@ -1,5 +1,40 @@
 import type { Portal } from "../domain/portal";
 
+export function acceptPolicy(expectedUrl: string) {
+  if (location.href !== expectedUrl || location.pathname !== "/my.policy")
+    return;
+  const notice = document.body.innerText.replace(/\s+/g, " ");
+  if (
+    !/authorized users only/i.test(notice) ||
+    !/activities (?:may be |are )?monitored/i.test(notice) ||
+    !/consent to such monitoring/i.test(notice)
+  )
+    return;
+  const controls = [
+    ...document.querySelectorAll<HTMLAnchorElement>("a[href]"),
+  ].filter(
+    (control) =>
+      control.getClientRects().length > 0 &&
+      getComputedStyle(control).visibility === "visible" &&
+      !control.matches('[aria-disabled="true"]') &&
+      URL.parse(control.href)?.origin === location.origin,
+  );
+  const accept = controls.filter((control) =>
+    /^I Accept$/i.test(control.innerText.trim()),
+  );
+  if (
+    accept.length !== 1 ||
+    !controls.some((control) =>
+      /^I (?:Don['’]t|Do Not) Accept$/i.test(control.innerText.trim()),
+    )
+  )
+    return;
+  const control = accept[0];
+  if (!control || control.dataset.browserModsAccepted !== undefined) return;
+  control.dataset.browserModsAccepted = "";
+  control.click();
+}
+
 // Chrome serializes this function into an isolated world. Keep it self-contained.
 export async function inspectPortal(
   portal: Portal,

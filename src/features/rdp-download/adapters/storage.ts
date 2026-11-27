@@ -28,6 +28,18 @@ export async function enableRdp(enabled: boolean) {
   await chrome.storage.local.set({ [preferenceKey]: { ...current, enabled } });
 }
 
+export async function setPolicyAcceptance(origin: string, enabled: boolean) {
+  if (
+    enabled &&
+    !(await chrome.permissions.request({ origins: [origin + "/*"] }))
+  )
+    throw Error("Portal access was declined.");
+  const current = await loadRdpPreferences();
+  await chrome.storage.local.set({
+    [preferenceKey]: { ...current, policyOrigin: enabled ? origin : null },
+  });
+}
+
 export async function readRdpRun(tabId: number) {
   const key = `${runPrefix}${tabId}`;
   return (await chrome.storage.session.get(key))[key] as

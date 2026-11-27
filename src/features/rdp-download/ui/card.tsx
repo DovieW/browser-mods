@@ -4,6 +4,7 @@ import {
   enableRdp,
   loadRdpPreferences,
   readRdpRun,
+  setPolicyAcceptance,
 } from "../adapters/storage";
 import {
   isMicrosoftSignIn,
@@ -61,6 +62,8 @@ export function RdpCard({
   const portal = makePortal(url, label);
   const canConfigure = makePortal(url, "placeholder") !== null;
   const address = portalAddress(url);
+  const policyOrigin =
+    address?.pathname === "/my.policy" ? address.origin : prefs?.policyOrigin;
   const microsoft =
     run?.phase === "waiting" && address && isMicrosoftSignIn(address);
   return (
@@ -77,6 +80,20 @@ export function RdpCard({
         />
         RDP download helper
       </label>
+      {prefs?.enabled && policyOrigin && (
+        <label>
+          <input
+            type="checkbox"
+            checked={prefs.policyOrigin === policyOrigin}
+            disabled={busy}
+            onChange={(event) => {
+              const enabled = event.target.checked;
+              void save(() => setPolicyAcceptance(policyOrigin, enabled));
+            }}
+          />
+          Automatically accept the F5 monitoring notice
+        </label>
+      )}
       {prefs?.enabled && microsoft && (
         <p>
           Press Ctrl+Shift+P on the Microsoft username and password screens to

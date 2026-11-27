@@ -7,7 +7,11 @@ export type Run = {
   restarted: boolean;
   started?: number;
 };
-export type Preferences = { enabled: boolean; portal?: Portal };
+export type Preferences = {
+  enabled: boolean;
+  portal?: Portal;
+  policyOrigin?: string;
+};
 
 export function portalAddress(url: string) {
   const address = URL.parse(url);
@@ -36,6 +40,14 @@ export function readPreferences(value: unknown): Preferences {
   if (typeof value !== "object" || value === null) return { enabled: true };
   const raw = value as Partial<Preferences>;
   const enabled = raw.enabled !== false;
+  const policyOrigin =
+    typeof raw.policyOrigin === "string" &&
+    portalAddress(raw.policyOrigin)?.origin === raw.policyOrigin
+      ? raw.policyOrigin
+      : undefined;
+  const preferences: Preferences = policyOrigin
+    ? { enabled, policyOrigin }
+    : { enabled };
   const portal = raw.portal;
   if (
     !portal ||
@@ -43,12 +55,12 @@ export function readPreferences(value: unknown): Preferences {
     typeof portal.path !== "string" ||
     typeof portal.desktop !== "string"
   ) {
-    return { enabled };
+    return preferences;
   }
   const parsed = makePortal(portal.origin + portal.path, portal.desktop);
   return parsed?.origin === portal.origin && parsed.path === portal.path
-    ? { enabled, portal: parsed }
-    : { enabled };
+    ? { ...preferences, portal: parsed }
+    : preferences;
 }
 
 export function isMicrosoftSignIn(url: URL) {

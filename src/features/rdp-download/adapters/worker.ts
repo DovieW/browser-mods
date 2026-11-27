@@ -9,7 +9,7 @@ import {
   type Preferences,
   type Run,
 } from "../domain/portal";
-import { inspectPortal, isFreshPortalVisit } from "./page";
+import { acceptPolicy, inspectPortal, isFreshPortalVisit } from "./page";
 import { loadRdpPreferences, readRdpRun } from "./storage";
 
 export function registerRdpHelper() {
@@ -113,10 +113,27 @@ export function registerRdpHelper() {
   }
 
   async function handlePage(id: number, url: string) {
-    const { enabled, portal } = await prefs;
-    if (!enabled || !portal) return;
-    await restored;
+    const { enabled, portal, policyOrigin } = await prefs;
+    if (!enabled) return;
     const address = portalAddress(url);
+    if (
+      policyOrigin &&
+      address?.origin === policyOrigin &&
+      address.pathname === "/my.policy"
+    ) {
+      const current = await loadRdpPreferences();
+      if (
+        current.enabled &&
+        current.policyOrigin === policyOrigin &&
+        (await chrome.permissions.contains({
+          origins: [policyOrigin + "/*"],
+        })) &&
+        (await currentUrl(id)) === url
+      )
+        await result(id, acceptPolicy, [url]);
+    }
+    if (!portal) return;
+    await restored;
     if (address?.origin !== portal.origin) {
       if (
         ownedTabs.has(id) &&
@@ -259,7 +276,8 @@ export function registerRdpHelper() {
     if (
       change.status !== "complete" ||
       !tab.url ||
-      (settings && (!settings.enabled || !settings.portal))
+      (settings &&
+        (!settings.enabled || (!settings.portal && !settings.policyOrigin)))
     )
       return;
     const url = tab.url;

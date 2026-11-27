@@ -8,6 +8,8 @@ Only the exact configured desktop control on the observed webtop path can start 
 
 When a top-level F5 RDP launch URL on the configured origin returns HTTP 403 or renders Chrome's own error page, the helper returns to the portal home once for that run. An ordinary launch response stays on its normal path. Recovery uses the existing tab-completion event and portal permissions. The same manual sign-in and MFA handoff applies before another download can start.
 
+The popup can remember the user's choice to acknowledge the F5 monitoring notice automatically. The choice is local to one HTTPS origin and can be set from the notice page before a desktop is configured. On completed loads, the helper checks that the rendered notice includes the expected monitoring language and offers a unique visible same-origin acceptance link alongside a decline link. Pages that fail these checks stay on screen. The download permission is needed only for the file workflow.
+
 An unconfigured or disabled helper ignores tab loads after the initial settings read. There is no polling or always-on page content script. The live workflow's nonstandard signed-out variants and exact desktop control still need a user-assisted run. The packaged fixture uses a simulated HTTPS portal and sign-in handoff, with permissions granted in its disposable manifest. It covers disabled behavior, one signed-out restart, manual policy acceptance, delayed portal readiness, download confirmation, reload deduplication, and rejection of ambiguous controls. No new runtime package was added for the fixed local configuration shape.
 
 The current build targets the observed F5 portal pattern. Any Chrome Web Store scope discussion belongs in feature admission before publication.
