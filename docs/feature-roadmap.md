@@ -53,7 +53,14 @@ Acceptance covers stale or closed chats, conversation changes in the same tab, u
 
 ### Streamline RDP file downloads
 
-**Proposed follow-up.** Investigate a user-started shortcut that takes an existing remote access portal session through to downloading the selected RDP file. Check whether an authenticated session can go straight to the download. When sign-in is needed, coordinate existing browser autofill and guide the user through the verification step. Confirm the expected download and stop on unexpected sign-in screens. Keep employer-specific configuration local and keep passwords and verification codes out of extension storage and logs.
+**Proposed follow-up.** Offer an opt-in helper that runs on deliberate visits to a configured remote access portal. A fresh visit requests one new RDP file. Keep the portal origin, recognized page variants, and selected remote desktop in local configuration.
+
+- If the authenticated portal is ready, use the configured desktop's normal download control.
+- If the portal shows a recognized signed-out or expired-session page, follow its normal start-session link once. Leave policy acceptance, sign-in submission, and verification to the user. Existing browser autofill can run as usual.
+- After any verification method, resume as soon as the same tab reaches the verified authenticated portal and the expected desktop control is available. Use navigation and page readiness events. A return to the portal origin by itself is insufficient because the sign-in and signed-out pages share it.
+- Confirm one completed RDP download for that run. Stop on cancellation, an unknown page, an ambiguous desktop selection, a failed download, or a second signed-out screen in the same run. A reload, redirect, or worker restart must not trigger a duplicate download. A later deliberate visit can start a fresh run.
+
+Keep passwords, verification codes, and session tokens out of extension storage and logs. Test an already-authenticated visit, the known signed-out page, other observed restart screens, return from MFA, navigation away, repeated redirects, and a completed download. Capture the other signed-out variant and confirm the portal's desktop control before enabling automation on the live site.
 
 ### Extension profiles and versioned ZIPs
 
