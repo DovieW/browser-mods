@@ -7,7 +7,11 @@ const assert = require("node:assert/strict");
 (async () => {
   const profile = await fs.mkdtemp(path.join(os.tmpdir(), "mods-launcher-"));
   const extension = path.join(profile, "extension");
-  await fs.cp("dist", extension, { recursive: true });
+  await fs.cp(
+    process.env.SHORTCUTS_TEST_EXTENSION || ".output/chrome-mv3",
+    extension,
+    { recursive: true },
+  );
   const manifest = JSON.parse(
     await fs.readFile(path.join(extension, "manifest.json")),
   );

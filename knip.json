@@ -1,6 +1,11 @@
 {
-  "entry": ["src/entrypoints/**/*.{ts,tsx}", "src/core/actions/catalog.ts"],
+  "entry": [
+    "src/entrypoints/**/*.{ts,tsx}",
+    "src/core/actions/catalog.ts",
+    "tests/module-harness.cjs"
+  ],
   "project": ["src/**/*.{ts,tsx}"],
+  "ignoreBinaries": ["chrome-devtools"],
   "ignoreDependencies": [
     "@doview/mods-shared",
     "@eslint/js",

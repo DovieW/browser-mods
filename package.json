@@ -5,18 +5,21 @@
   "scripts": {
     "test": "node --test tests/*.test.cjs",
     "check": "npm run typecheck && npm run lint && npm run architecture",
-    "test:browser": "node tests/browser.cjs && node tests/media-browser.cjs && node tests/clipboard-browser.cjs && node tests/options-browser.cjs && node tests/workspace-browser.cjs && node tests/launcher-browser.cjs && node tests/playlist-browser.cjs && node tests/rdp-browser.cjs",
+    "test:browser": "node tests/browser.cjs && node tests/media-browser.cjs && node tests/clipboard-browser.cjs && node tests/options-browser.cjs && node tests/workspace-browser.cjs && node tests/launcher-browser.cjs && node tests/playlist-browser.cjs && node tests/rdp-browser.cjs && node tests/reload-browser.cjs",
     "icons": "node scripts/render-icons.cjs",
     "package": "npm run build && node scripts/package-release.cjs",
-    "build": "node --import tsx scripts/build.mjs",
+    "build": "node scripts/build.mjs",
+    "dev": "node scripts/dev-browser.mjs refresh",
+    "dev:browser": "node scripts/dev-browser.mjs",
+    "deploy:local": "node scripts/deploy-local.mjs",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src",
     "architecture": "depcruise src --config .dependency-cruiser.cjs && node scripts/checks/architecture.mjs",
     "unused": "knip",
     "verify": "npm run format:check && npm run typecheck && npm run lint && npm run architecture && npm run unused && npm test && npm run build",
-    "test:browser:packaged": "npm run build && SHORTCUTS_TEST_EXTENSION=./dist npm run test:browser",
-    "format": "prettier --write src scripts tests docs *.json *.mjs *.cjs AGENTS.md README.md .github",
-    "format:check": "prettier --check src scripts tests docs *.json *.mjs *.cjs AGENTS.md README.md .github",
+    "test:browser:packaged": "npm run build && npm run test:browser",
+    "format": "prettier --write src scripts tests docs *.json *.mjs *.cjs wxt.config.ts AGENTS.md README.md .github",
+    "format:check": "prettier --check src scripts tests docs *.json *.mjs *.cjs wxt.config.ts AGENTS.md README.md .github",
     "test:performance": "npm run build && node scripts/performance/measure.cjs",
     "performance:compare": "node scripts/performance/compare.cjs"
   },
@@ -33,9 +36,9 @@
     "playwright": "^1.63.0",
     "prettier": "^3.10.1",
     "sharp": "^0.35.5",
-    "tsx": "^4.23.15",
     "typescript": "^6.0.3",
-    "typescript-eslint": "^8.72.2"
+    "typescript-eslint": "^8.72.2",
+    "wxt": "0.21.5"
   },
   "dependencies": {
     "@radix-ui/react-dropdown-menu": "2.2.1",

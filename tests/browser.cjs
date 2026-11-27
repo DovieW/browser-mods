@@ -11,7 +11,8 @@ const http = require("node:http");
     path.join(os.tmpdir(), "simple-shortcuts-browser-"),
   );
   const source = path.resolve(
-    process.env.SHORTCUTS_TEST_EXTENSION || path.join(__dirname, "..", "dist"),
+    process.env.SHORTCUTS_TEST_EXTENSION ||
+      path.join(__dirname, "..", ".output", "chrome-mv3"),
   );
   const extension = path.join(profile, "extension");
   await fs.cp(source, extension, { recursive: true });

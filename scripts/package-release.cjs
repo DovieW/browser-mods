@@ -16,7 +16,7 @@ const { execFileSync } = require("node:child_process");
     !/^\d+\.\d+\.\d+$/.test(manifest.version)
   )
     throw Error("Release versions must match");
-  const source = path.join(root, "dist");
+  const source = path.join(root, ".output", "chrome-mv3");
   const files = await fs.readdir(source);
   const output = path.resolve(
     process.argv[2] ||
@@ -32,18 +32,9 @@ const { execFileSync } = require("node:child_process");
         recursive: true,
       });
     const name = `browser-mods-v${manifest.version}.zip`;
-    execFileSync(
-      "zip",
-      [
-        "-q",
-        "-r",
-        "-X",
-        "-9",
-        name,
-        ...files.filter((file) => file !== "build-meta.json"),
-      ],
-      { cwd: stage },
-    );
+    execFileSync("zip", ["-q", "-r", "-X", "-9", name, ...files], {
+      cwd: stage,
+    });
     await fs.copyFile(path.join(stage, name), path.join(output, name));
     console.log(path.join(output, name));
   } finally {

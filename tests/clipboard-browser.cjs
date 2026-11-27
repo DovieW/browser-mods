@@ -14,7 +14,8 @@ const { execFileSync } = require("node:child_process");
     path.join(os.tmpdir(), "simple-shortcuts-clipboard-"),
   );
   let extension = path.resolve(
-    process.env.SHORTCUTS_TEST_EXTENSION || path.join(__dirname, "..", "dist"),
+    process.env.SHORTCUTS_TEST_EXTENSION ||
+      path.join(__dirname, "..", ".output", "chrome-mv3"),
   );
   const native = process.env.SHORTCUTS_NATIVE === "1";
   const title = `Shortcuts clipboard ${path.basename(root)}`;

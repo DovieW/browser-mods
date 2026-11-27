@@ -7,7 +7,7 @@ const sharp = require("sharp");
 
 (async () => {
   const root = path.resolve(__dirname, "..");
-  const extension = path.join(root, "dist");
+  const extension = path.join(root, ".output", "chrome-mv3");
   const manifest = JSON.parse(
     await fs.readFile(path.join(root, "manifest.json"), "utf8"),
   );

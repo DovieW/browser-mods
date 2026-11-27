@@ -5,7 +5,9 @@ const os = require("node:os");
 const path = require("node:path");
 (async () => {
   const profile = await fs.mkdtemp(path.join(os.tmpdir(), "mods-workspace-"));
-  const extension = path.resolve("dist");
+  const extension = path.resolve(
+    process.env.SHORTCUTS_TEST_EXTENSION || ".output/chrome-mv3",
+  );
   const context = await chromium.launchPersistentContext(profile, {
     channel: "chromium",
     headless: true,

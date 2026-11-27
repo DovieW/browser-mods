@@ -5,7 +5,9 @@ const path = require("node:path");
 const assert = require("node:assert/strict");
 (async () => {
   const profile = await fs.mkdtemp(path.join(os.tmpdir(), "mods-options-"));
-  const extension = path.resolve("dist");
+  const extension = path.resolve(
+    process.env.SHORTCUTS_TEST_EXTENSION || ".output/chrome-mv3",
+  );
   const context = await chromium.launchPersistentContext(profile, {
     channel: "chromium",
     headless: true,

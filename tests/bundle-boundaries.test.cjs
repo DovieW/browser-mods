@@ -35,3 +35,21 @@ test("experiment sources and instrumentation cannot enter a release bundle", asy
     2,
   );
 });
+
+test("a shared chunk cannot put the UI renderer in the offscreen document", async () => {
+  const { checkBundles } = await import("../scripts/checks/bundles.mjs");
+  const errors = checkBundles(
+    {
+      outputs: {
+        "dist/offscreen.js": { inputs: {}, imports: ["dist/chunks/shared.js"] },
+        "dist/chunks/shared.js": {
+          inputs: { "node_modules/@tanstack/redact/dist/dom/index.js": {} },
+        },
+      },
+    },
+    {},
+  );
+  assert.deepEqual(errors, [
+    "dist/offscreen.js: UI renderer in non-UI context",
+  ]);
+});

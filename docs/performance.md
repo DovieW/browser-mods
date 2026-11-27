@@ -36,6 +36,12 @@ Three alternating before/after runs on the same Linux machine with Chromium 153.
 
 Gzipped popup JavaScript grew from 35.1 to 64.7 KiB. The Radix dropdown is loaded only in the popup. Options moved from 37.9 to 38.6 KiB and the launcher from 35.0 to 33.7 KiB. The worker still contains neither Redact nor Radix. The navigation adds no permissions, polling, or persistent page scripts. The popup menu unmounts with the popup, options listeners detach with their view, and the in-page palette retains its on-demand lifecycle. The contextual controls in the workflow fixture do not ship.
 
+## WXT build migration
+
+One before/after pair on the Kubuntu IdeaPad used Chromium 153.0.8010.12, Node 26.13.1, and the standard 15-load popup fixture. The first popup measured 181.0 → 166.6 ms, warm p50 measured 88.5 → 84.1 ms, and warm p95 measured 128.5 → 101.2 ms. A later WXT run measured 208.8, 93.6, and 102.1 ms respectively. Both WXT runs stayed below the regression threshold against this baseline. These samples do not establish a speedup.
+
+The packaged manifest comparison verifies the same permission set, content-script registration, and background entrypoint. WXT and DevTools run outside the extension, Redact stays in the UI, and the existing runtime listeners retain their lifecycle. The migration adds no polling, keepalive, or persistent page code. The benchmark does not measure idle CPU or memory.
+
 ## Automated protections and limits
 
 - Lifecycle tests verify zero recurring tab queries/writes/injections during idle quiescence and removal of runtime listeners on disposal.

@@ -3,3 +3,6 @@ test-results/
 dist/
 
 native/shortcut-helper/target/
+
+.output/
+.wxt/

@@ -10,7 +10,9 @@ const quantile = (values, p) =>
     Math.min(values.length - 1, Math.ceil(values.length * p) - 1)
   ];
 (async () => {
-  const source = path.resolve(process.env.MODS_BENCH_EXTENSION || "dist");
+  const source = path.resolve(
+    process.env.MODS_BENCH_EXTENSION || ".output/chrome-mv3",
+  );
   const profile = await fs.mkdtemp(path.join(os.tmpdir(), "mods-benchmark-"));
   const samples = [];
   const started = performance.now();

@@ -15,9 +15,13 @@ function video(duration, id = "one", list = "PL-fixture") {
 (async () => {
   const profile = await fs.mkdtemp(path.join(os.tmpdir(), "mods-playlist-"));
   const extension = path.join(profile, "extension");
-  await fs.cp(process.env.SHORTCUTS_TEST_EXTENSION || "dist", extension, {
-    recursive: true,
-  });
+  await fs.cp(
+    process.env.SHORTCUTS_TEST_EXTENSION || ".output/chrome-mv3",
+    extension,
+    {
+      recursive: true,
+    },
+  );
   const manifestFile = path.join(extension, "manifest.json");
   const manifest = JSON.parse(await fs.readFile(manifestFile, "utf8"));
   // The extension page is opened directly in this fixture. A real toolbar

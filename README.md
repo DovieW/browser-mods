@@ -8,7 +8,7 @@ Keyboard shortcuts for tabs, groups, windows, navigation, and media. Requires Ch
 
 This repository is being migrated into a unified browser toolkit. The existing runtime has been extracted into typed modules with tested architecture boundaries and a shared theme; other utility extensions have not yet been integrated. Their existing installations remain the working versions.
 
-Run `npm ci` and `npm run verify`, then load `dist/` as an unpacked extension. The popup opens to Favorites, with All actions and workflow categories in the left rail. On a YouTube playlist, open **Media** to see the duration. Use `npm run test:browser:packaged` for disposable-profile regression checks. See [UI interaction](docs/ui-interaction.md).
+Run `npm ci` and `npm run verify`, then use `npm run dev` to load the unpacked build into a dedicated development browser. The popup opens to Favorites, with All actions and workflow categories in the left rail. On a YouTube playlist, open **Media** to see the duration. Use `npm run test:browser:packaged` for disposable-profile regression checks. See [Development workflow](docs/development.md) and [UI interaction](docs/ui-interaction.md).
 
 See [architecture](docs/architecture.md), [feature admission and performance policy](docs/feature-admission.md), and [migration status](docs/migration.md). The shared standards repository is https://github.com/DovieW/dovies-mods-shared.
 
@@ -16,7 +16,7 @@ See [architecture](docs/architecture.md), [feature admission and performance pol
 
 Open **Options → Shortcuts → Edit in Chrome**, or visit `chrome://extensions/shortcuts`, to assign keys. **Assignment history & recovery** shows differences from your saved setup. Assign **Open Browser Mods command palette** separately, then choose its placement in **Options → Appearance & controls**.
 
-This README describes the current source; see [the changelog](CHANGELOG.md) for released and unreleased changes. To install a [GitHub release](https://github.com/DovieW/browser-mods/releases), extract its extension ZIP, enable **Developer mode** at `chrome://extensions`, choose **Load unpacked**, and select the extracted directory. Load the built `dist/` directory for this migration version. After updating the files, click the extension's reload button there. An unpacked copy can have different shortcut assignments from the installed Web Store version. GitHub releases and Chrome Web Store publication are separate; the store version may lag.
+This README describes the current source. See [the changelog](CHANGELOG.md) for released and unreleased changes. To install a [GitHub release](https://github.com/DovieW/browser-mods/releases), extract its extension ZIP, enable **Developer mode** at `chrome://extensions`, choose **Load unpacked**, and select the extracted directory. Keep that directory at the same path when updating to preserve the unpacked extension ID and its settings. An unpacked copy can have different shortcut assignments from the installed Web Store version. GitHub releases and Chrome Web Store publication are separate.
 
 For a local unpacked build, run `npm run build -- --shortcut-labels /path/to/shortcuts-backup.json` to append your saved keys to their descriptions in Chrome’s shortcut settings. Commands with an empty or missing saved key show only the category and description. Chrome still controls the actual assignments.
 
@@ -146,14 +146,13 @@ There are no permanent required host permissions, remote scripts, analytics, or 
 
 ## Development and verification
 
-Build with `npm run build`, then load `dist/` with **Load unpacked** at `chrome://extensions` (Developer mode).
+WXT builds the Chrome extension to `.output/chrome-mv3/`. See the [development workflow](docs/development.md) for programmatic reload, runtime inspection, and updating the existing local install.
 
 ```sh
 npm ci
-npm run check
-npm test
+npm run verify
 npx playwright install chromium
-npm run test:browser
+npm run test:browser:packaged
 npm run icons
 ```
 

@@ -14,7 +14,11 @@ const launch = "/f5vdi/rdp/launch/Common/test-desktop";
   const fixture = await fs.mkdtemp(path.join(os.tmpdir(), "mods-rdp-"));
   const extension = path.join(fixture, "extension");
   const profile = path.join(fixture, "profile");
-  await fs.cp(path.resolve("dist"), extension, { recursive: true });
+  await fs.cp(
+    path.resolve(process.env.SHORTCUTS_TEST_EXTENSION || ".output/chrome-mv3"),
+    extension,
+    { recursive: true },
+  );
   const manifestFile = path.join(extension, "manifest.json");
   const manifest = JSON.parse(await fs.readFile(manifestFile, "utf8"));
   manifest.host_permissions = [portal + "/*", microsoft + "/*"];

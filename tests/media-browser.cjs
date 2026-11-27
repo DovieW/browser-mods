@@ -14,7 +14,7 @@ const http = require("node:http");
   await fs.mkdir(fixture);
   await fs.cp(
     process.env.SHORTCUTS_TEST_EXTENSION ||
-      path.resolve(__dirname, "..", "dist"),
+      path.resolve(__dirname, "..", ".output", "chrome-mv3"),
     fixture,
     { recursive: true },
   );

@@ -1,8 +1,18 @@
 export function checkBundles(metadata, scripts) {
   const errors = [];
-  for (const [name, output] of Object.entries(metadata.outputs)) {
+  function filesFor(name, visited = new Set()) {
+    if (visited.has(name)) return [];
+    visited.add(name);
+    const output = metadata.outputs[name];
+    if (!output) return [];
+    return [
+      ...Object.keys(output.inputs),
+      ...(output.imports ?? []).flatMap((file) => filesFor(file, visited)),
+    ];
+  }
+  for (const name of Object.keys(metadata.outputs)) {
     if (!name.endsWith(".js")) continue;
-    const inputs = Object.keys(output.inputs);
+    const inputs = filesFor(name);
     if (inputs.some((file) => /node_modules\/(react|react-dom)\//.test(file)))
       errors.push(`${name}: native React was bundled`);
     if (
