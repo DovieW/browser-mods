@@ -253,6 +253,9 @@ export async function inspectPortal(
     const link = restartLink();
     if (!link) return "unknown" as const;
     if (action === "restart") link.click();
+    const referrer = URL.parse(document.referrer);
+    if (referrer?.origin === portal.origin && referrer.pathname === portal.path)
+      return "signed-out-from-webtop" as const;
     return "signed-out" as const;
   }
 

@@ -97,7 +97,7 @@ const launch = "/f5vdi/rdp/launch/Common/test-desktop";
         [webtop]:
           search === "?ambiguous"
             ? '<a href="/desktop.rdp">Work Desktop</a><a href="/desktop.rdp">Work Desktop</a>'
-            : `<main id="desktop"></main><script>
+            : `<a href="/vdesk/hangup.php3">Logout</a><main id="desktop"></main><script>
                 setTimeout(() => {
                   const favorite = document.createElement("span");
                   favorite.id = "/Common/test-desktop";
@@ -203,6 +203,11 @@ const launch = "/f5vdi/rdp/launch/Common/test-desktop";
     await recovery.reload();
     await recovery.getByText("Work Desktop", { exact: true }).waitFor();
     assert.equal(requests, 1);
+    await recovery.getByRole("link", { name: "Logout" }).click();
+    await recovery.waitForURL(portal + "/my.policy", { timeout: 5000 });
+    assert.equal(restarts, 2);
+    await recovery.goto(portal + "/vdesk/hangup.php3");
+    await recovery.getByText("Your session is finished.").waitFor();
     await recovery.close();
 
     const ambiguous = await context.newPage();
@@ -222,20 +227,20 @@ const launch = "/f5vdi/rdp/launch/Common/test-desktop";
     const denied = await context.newPage();
     await denied.goto(portal + launch + "?ok");
     assert.equal(await denied.locator("body").innerText(), "Unknown");
-    assert.equal(restarts, 1);
+    assert.equal(restarts, 2);
     await denied.goto(portal + launch).catch((error) => {
       if (!/ERR_HTTP_RESPONSE_CODE_FAILURE|interrupted/.test(String(error)))
         throw error;
     });
     await denied.waitForURL(portal + "/my.policy", { timeout: 5000 });
-    assert.equal(restarts, 2);
+    assert.equal(restarts, 3);
     const deniedAgain = await denied.goto(portal + launch).catch((error) => {
       if (!String(error).includes("ERR_HTTP_RESPONSE_CODE_FAILURE"))
         throw error;
     });
     assert.equal(deniedAgain?.status() ?? 403, 403);
     await denied.getByText("HTTP ERROR 403").waitFor();
-    assert.equal(restarts, 2);
+    assert.equal(restarts, 3);
     await denied.goto(portal + "/my.policy");
     await denied.getByRole("link", { name: "I Accept" }).click();
     const reauthenticated = denied.waitForEvent("download", { timeout: 8000 });

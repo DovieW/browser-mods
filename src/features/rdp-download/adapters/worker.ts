@@ -298,6 +298,25 @@ export function registerRdpHelper() {
     if (!(await permitted(portal))) return;
 
     const previous = await readRdpRun(id);
+    if (address.pathname === "/vdesk/hangup.php3") {
+      const page = await result(id, inspectPortal, [portal, url, "inspect"]);
+      if (
+        page?.result !== "signed-out-from-webtop" &&
+        (page?.result !== "signed-out" ||
+          (previous?.restarted && previous.phase !== "downloaded"))
+      )
+        return;
+      if (!(await stillEnabled(portal, id, url))) return;
+      await write(id, { phase: "waiting", restarted: true });
+      if (await stillEnabled(portal, id, url))
+        await result(
+          id,
+          inspectPortal,
+          [portal, url, "restart"],
+          page.documentId,
+        );
+      return;
+    }
     if (
       address.pathname.startsWith("/f5vdi/rdp/launch/") &&
       address.pathname !== "/f5vdi/rdp/launch/"
@@ -324,10 +343,7 @@ export function registerRdpHelper() {
       return;
     }
 
-    if (
-      address.pathname !== portal.path &&
-      address.pathname !== "/vdesk/hangup.php3"
-    ) {
+    if (address.pathname !== portal.path) {
       if (previous?.phase === "waiting") {
         await write(id, { ...waiting, phase: "stopped" });
       }
@@ -335,18 +351,6 @@ export function registerRdpHelper() {
     }
     const page = await result(id, inspectPortal, [portal, url, "inspect"]);
     if (!(await stillEnabled(portal, id, url))) return;
-    if (page?.result === "signed-out" && !waiting.restarted) {
-      await write(id, { phase: "waiting", restarted: true });
-      if (await stillEnabled(portal, id, url)) {
-        await result(
-          id,
-          inspectPortal,
-          [portal, url, "restart"],
-          page.documentId,
-        );
-      }
-      return;
-    }
     if (page?.result !== "ready") {
       await write(id, { phase: "stopped", restarted: waiting.restarted });
       return;
