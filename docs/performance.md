@@ -50,7 +50,7 @@ On the Kubuntu IdeaPad with Remmina connected via RD Gateway, 20 framed requests
 
 ## Expandable Options sidebar and curated popup
 
-One before/after pair on the Kubuntu IdeaPad compared `8301f5d` with the curated popup. Chromium 153.0.8010.12 and Node v26.13.1 opened each build 15 times with the same four actions visible. First open measured 201.1 → 156.6 ms, warm p50 measured 87.4 → 80.2 ms, and warm p95 measured 107.0 → 119.2 ms. The comparison flagged no review thresholds. The unpacked build went from 395.3 to 311.5 kB after removing the popup row menu and Radix dependency.
+Three alternating before/after runs on the Kubuntu IdeaPad compared `8301f5d` with the curated popup. Chromium 153.0.8010.12 and Node v26.13.1 opened each build 15 times with the same four actions visible. Across those runs, medians were 204.0 → 146.0 ms for first open, 96.4 → 96.0 ms for warm p50, and 123.6 → 108.4 ms for warm p95. One standalone run flagged a warm p95 of 134.1 ms against the initial baseline of 107.0 ms. The alternating runs had no warm p95 above 124.2 ms on either build. The unpacked build went from 395.3 to 311.5 kB after removing the popup row menu and Radix dependency.
 
 The popup reads its ordered sync preference and only looks up the active tab when a contextual item is enabled. Its storage listener detaches when the popup closes. Inline tab-switching settings listen for changes only while their pane is open. The redesign adds no permissions, polling, or persistent page code. The benchmark measures popup rendering and does not cover contextual tool latency or idle memory.
 
