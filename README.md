@@ -18,6 +18,8 @@ Open the extension popup and click **Edit keys**, or visit `chrome://extensions/
 
 This README describes the current source; see [the changelog](CHANGELOG.md) for released and unreleased changes. To install a [GitHub release](https://github.com/DovieW/browser-mods/releases), extract its extension ZIP, enable **Developer mode** at `chrome://extensions`, choose **Load unpacked**, and select the extracted directory. Load the built `dist/` directory for this migration version. After updating the files, click the extension's reload button there. An unpacked copy can have different shortcut assignments from the installed Web Store version. GitHub releases and Chrome Web Store publication are separate; the store version may lag.
 
+For a local unpacked build, run `npm run build -- --shortcut-labels /path/to/shortcuts-backup.json` to append your saved keys to their descriptions in Chrome’s shortcut settings. Commands with an empty or missing saved key show only the category and description. Chrome still controls the actual assignments.
+
 Four shortcuts are suggested by the extension on installation. Chrome can assign them differently or leave them unset if they conflict with existing shortcuts. Everything else below is a recommendation you must assign yourself. Chrome allows at most four suggested shortcuts in an extension manifest.
 
 | Command                                            | Suggested on installation | Recommended manual binding |

@@ -1,7 +1,19 @@
 import { checkBundles } from "./checks/bundles.mjs";
 import { build } from "esbuild";
 import { cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { parseArgs } from "node:util";
 import { commands } from "../src/core/actions/catalog.ts";
+import { validateShortcutSnapshot } from "../src/features/shortcut-setup/adapters/snapshots.ts";
+
+const { values } = parseArgs({
+  options: { "shortcut-labels": { type: "string" } },
+});
+const snapshotPath = values["shortcut-labels"];
+const preferred = snapshotPath
+  ? validateShortcutSnapshot(JSON.parse(await readFile(snapshotPath, "utf8")))
+      .bindings
+  : {};
+
 await rm("dist", { recursive: true, force: true });
 await mkdir("dist");
 const manifest = JSON.parse(await readFile("manifest.json", "utf8"));
@@ -10,7 +22,12 @@ manifest.commands = Object.fromEntries(
   Object.entries(commands).map(
     ([id, { shortcutGroup, description, ...binding }]) => [
       id,
-      { ...binding, description: `${shortcutGroup} · ${description}` },
+      {
+        ...binding,
+        description: [shortcutGroup, description, preferred[id]]
+          .filter(Boolean)
+          .join(" - "),
+      },
     ],
   ),
 );
