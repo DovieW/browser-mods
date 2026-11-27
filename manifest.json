@@ -30,7 +30,7 @@
     "page": "options.html",
     "open_in_tab": true
   },
-  "optional_permissions": ["bookmarks"],
+  "optional_permissions": ["bookmarks", "downloads"],
   "web_accessible_resources": [
     {
       "resources": [

@@ -1,3 +1,4 @@
+import { RdpCard } from "../../rdp-download/public-ui";
 import {
   PlaylistDurationCard,
   playlistTab,
@@ -472,6 +473,9 @@ function App({
               </button>
             )}
           </div>
+          {mode === "popup" && !query && !scope && (
+            <RdpCard url={current.url} tabId={current.id} />
+          )}
           {playlist && current.id !== undefined && !query && !scope && (
             <PlaylistDurationCard
               key={`${current.id}:${playlist.page}:${playlist.list}`}

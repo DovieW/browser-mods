@@ -53,10 +53,10 @@ Acceptance covers stale or closed chats, conversation changes in the same tab, u
 
 ### Streamline RDP file downloads
 
-**Proposed follow-up.** Offer an opt-in helper that runs on deliberate visits to a configured remote access portal. A fresh visit requests one new RDP file. Keep the portal origin, recognized page variants, and selected remote desktop in local configuration.
+**First slice implemented.** [The RDP download helper](decisions/2026-11-26-rdp-download.md) provides local setup and a popup switch that defaults to on. It runs on deliberate visits to a configured remote access portal. A fresh visit requests one new RDP file. Keep the portal origin, recognized page variants, and selected remote desktop in local configuration.
 
 - If the authenticated portal is ready, use the configured desktop's normal download control.
-- If the portal shows a recognized signed-out or expired-session page, follow its normal start-session link once. Leave policy acceptance, sign-in submission, and verification to the user. Existing browser autofill can run as usual.
+- If the portal shows a recognized signed-out or expired-session page, follow its normal start-session link once. Leave policy acceptance, sign-in submission, and verification to the user. Existing F5 autofill can run as usual. On Microsoft, the user invokes Bitwarden on both the username and password screens.
 - After any verification method, resume as soon as the same tab reaches the verified authenticated portal and the expected desktop control is available. Use navigation and page readiness events. A return to the portal origin by itself is insufficient because the sign-in and signed-out pages share it.
 - Confirm one completed RDP download for that run. Stop on cancellation, an unknown page, an ambiguous desktop selection, a failed download, or a second signed-out screen in the same run. A reload, redirect, or worker restart must not trigger a duplicate download. A later deliberate visit can start a fresh run.
 
