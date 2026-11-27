@@ -28,10 +28,10 @@ const path = require("node:path");
     assert.equal(await popup.locator(".result").count(), 4);
     await popup.locator("#search").fill("screenshot");
     const screenshotCommand = popup.getByRole("option", {
-      name: /Copy a screenshot of the visible page/,
+      name: /Copy a screenshot of the visible page with URL/,
     });
     const screenshotSetting = popup.getByRole("option", {
-      name: /Show page URL on screenshots/,
+      name: /Screenshot URL label/,
     });
     await screenshotCommand.waitFor();
     await screenshotSetting.waitFor();
@@ -73,7 +73,11 @@ const path = require("node:path");
     await options
       .getByLabel("Include disabled and planned mods in search")
       .check();
-    await popup.getByRole("option", { name: /Enable Clipboard/ }).waitFor();
+    const disabledClipboardCommands = popup.getByRole("option", {
+      name: /Enable Clipboard/,
+    });
+    await disabledClipboardCommands.nth(1).waitFor();
+    assert.equal(await disabledClipboardCommands.count(), 2);
     await options.getByRole("button", { name: "Mods", exact: true }).click();
     await options.getByLabel("Clipboard", { exact: true }).check();
     await options
@@ -86,7 +90,7 @@ const path = require("node:path");
       .waitFor();
     assert.equal(
       await options.frameLocator("iframe").locator("#shortcuts tr").count(),
-      24,
+      25,
     );
     await options
       .getByRole("button", { name: "Sync & backup", exact: true })

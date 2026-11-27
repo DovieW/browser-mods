@@ -1,4 +1,8 @@
 import {
+  parseScreenshotLabel,
+  screenshotLabelDefaults,
+} from "../../../core/clipboard/screenshot-label";
+import {
   validatePreferences,
   parsePreferences,
   preferenceDefaults,
@@ -46,10 +50,12 @@ async function savePreferences(value: Preferences): Promise<void> {
     Object.fromEntries(Object.entries(value).map(([k, v]) => [prefix + k, v])),
   );
 }
-export async function readScreenshotUrlPreference(): Promise<boolean> {
-  const key = prefix + "showScreenshotUrl";
-  const value: unknown = (await chrome.storage.sync.get(key))[key];
-  return value !== false;
+export async function readScreenshotLabelStyle() {
+  const keys = Object.keys(screenshotLabelDefaults);
+  const stored = await chrome.storage.sync.get(keys.map((key) => prefix + key));
+  return parseScreenshotLabel(
+    Object.fromEntries(keys.map((key) => [key, stored[prefix + key]])),
+  );
 }
 export async function importPreferences(value: unknown): Promise<void> {
   if (!validatePreferences(value)) throw Error("Invalid settings backup.");

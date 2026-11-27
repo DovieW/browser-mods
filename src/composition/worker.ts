@@ -2,7 +2,7 @@ import {
   authorizeLauncher,
   openPalette,
   readPreferences,
-  readScreenshotUrlPreference,
+  readScreenshotLabelStyle,
   actionSection,
 } from "../features/workspace/public";
 import { actionRegistry } from "../core/actions/registry";
@@ -37,9 +37,9 @@ export function createWorker(chrome: BrowserPort) {
     moveAllGroups,
     cycleGroups,
   } = tabs;
-  const { copyUrls, copyScreenshot } = createClipboard(
+  const { copyUrls, copyScreenshot, copyPlainScreenshot } = createClipboard(
     chrome,
-    readScreenshotUrlPreference,
+    readScreenshotLabelStyle,
     tabs.activateWithoutHistory,
   );
   const { pauseAllTabs } = createMedia(chrome);
@@ -104,6 +104,7 @@ export function createWorker(chrome: BrowserPort) {
     "walk-recent-tabs-forward": (context) => walkRecentTabs(context, -1),
     "copy-url": copyUrls,
     "copy-screenshot": copyScreenshot,
+    "copy-screenshot-plain": copyPlainScreenshot,
     "move-all-groups": moveAllGroups,
     "go-home": async (context) => {
       if (!context.active?.url || !/^https?:/.test(context.active.url))

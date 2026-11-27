@@ -31,7 +31,7 @@ const assert = require("node:assert/strict");
         console.error(await page.locator("#status").innerText(), errors);
         throw e;
       });
-    assert.equal(await page.locator("#shortcuts tr").count(), 24);
+    assert.equal(await page.locator("#shortcuts tr").count(), 25);
     assert.match(await page.locator("#status").innerText(), /matches|differ/);
     const device = await worker.evaluate(
       async () =>
@@ -51,7 +51,7 @@ const assert = require("node:assert/strict");
     const labels = (await entries.locator(".command-name").allTextContents())
       .map((label) => label.trim())
       .filter((label) => /^[A-Z]+ - /.test(label));
-    assert.equal(labels.length, 24);
+    assert.equal(labels.length, 25);
     const categories = labels.map((label) => label.split(" - ")[0]);
     assert.deepEqual(categories, categories.toSorted());
     console.log("PASS Chrome shortcut settings groups command rows");

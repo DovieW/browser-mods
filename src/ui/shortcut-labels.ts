@@ -16,8 +16,7 @@ export function formatShortcut(shortcut?: string) {
     .join(" + ");
 }
 export function commandCategory(name: string) {
-  if (["copy-url", "copy-screenshot", "go-home"].includes(name))
-    return "Navigation";
+  if (name.startsWith("copy-") || name === "go-home") return "Navigation";
   if (name === "pause-all-tabs") return "Media";
   if (name.includes("window")) return "Windows";
   if (name.includes("group")) return "Groups";
@@ -49,7 +48,8 @@ export function shortCommandLabel(command: Command) {
     "walk-recent-tabs": "Older recent tab",
     "walk-recent-tabs-forward": "Newer recent tab",
     "copy-url": "Copy links",
-    "copy-screenshot": "Copy screenshot",
+    "copy-screenshot": "Copy screenshot with URL",
+    "copy-screenshot-plain": "Copy screenshot without URL",
     "move-all-groups": "Groups to front / back",
     "go-home": "Site home",
     "cycle-tab-groups": "Move to next group",

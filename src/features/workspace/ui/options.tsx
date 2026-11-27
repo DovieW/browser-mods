@@ -1,3 +1,4 @@
+import { ScreenshotLabelSettings } from "../../clipboard/public-ui";
 export type OptionsProps = {
   port: WorkspacePort;
   prefs: Preferences;
@@ -347,17 +348,12 @@ export function Options({
                   </p>
                   {s === "Clipboard" && (
                     <>
-                      <label className="check">
-                        <input
-                          id="showScreenshotUrl"
-                          type="checkbox"
-                          checked={prefs.showScreenshotUrl}
-                          onChange={(e) => {
-                            void save("showScreenshotUrl", e.target.checked);
-                          }}
-                        />
-                        Show page URL on screenshots
-                      </label>
+                      <ScreenshotLabelSettings
+                        style={prefs}
+                        save={(key, value) =>
+                          save(key, value as Preferences[typeof key])
+                        }
+                      />
                       <button
                         onClick={() => {
                           void port

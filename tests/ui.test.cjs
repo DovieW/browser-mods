@@ -71,6 +71,10 @@ test("every manifest command has a handler and at most four defaults", () => {
     Object.values(catalog).filter((command) => command.suggested_key).length <=
       4,
   );
+  assert.equal(
+    Object.hasOwn(catalog["copy-screenshot-plain"], "suggested_key"),
+    false,
+  );
   assert.equal(manifest.permissions.includes("activeTab"), true);
   assert.deepEqual(manifest.optional_host_permissions, [
     "http://*/*",

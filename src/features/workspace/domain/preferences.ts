@@ -1,3 +1,8 @@
+import {
+  parseScreenshotLabel,
+  screenshotLabelDefaults,
+} from "../../../core/clipboard/screenshot-label";
+
 export const sections = ["Tabs", "Clipboard", "Media"] as const;
 export type Section = (typeof sections)[number];
 export const preferenceDefaults = {
@@ -5,7 +10,7 @@ export const preferenceDefaults = {
   placement: "toolbar" as const,
   searchMode: "scoped" as const,
   includeDisabled: false,
-  showScreenshotUrl: true,
+  ...screenshotLabelDefaults,
   pins: ["copy-url", "copy-screenshot", "switch-to-last-tab", "pause-all-tabs"],
   hidden: [] as string[],
   order: [] as string[],
@@ -37,11 +42,7 @@ export function parsePreferences(value: unknown): Preferences {
   }
   if ("includeDisabled" in value && typeof value.includeDisabled === "boolean")
     p.includeDisabled = value.includeDisabled;
-  if (
-    "showScreenshotUrl" in value &&
-    typeof value.showScreenshotUrl === "boolean"
-  )
-    p.showScreenshotUrl = value.showScreenshotUrl;
+  Object.assign(p, parseScreenshotLabel(value));
   for (const key of [
     "pins",
     "hidden",
@@ -74,10 +75,17 @@ export function validatePreferences(value: unknown): boolean {
   return (
     Object.keys(normalized).every(
       (k) =>
-        (k === "showScreenshotUrl" && !Object.hasOwn(value, k)) ||
+        (Object.hasOwn(screenshotLabelDefaults, k) &&
+          !Object.hasOwn(value, k)) ||
         (Object.hasOwn(value, k) &&
           JSON.stringify(Reflect.get(value, k)) ===
             JSON.stringify(Reflect.get(normalized, k))),
-    ) && Object.keys(value).every((k) => Object.hasOwn(normalized, k))
+    ) &&
+    Object.keys(value).every(
+      (k) =>
+        Object.hasOwn(normalized, k) ||
+        (k === "showScreenshotUrl" &&
+          typeof Reflect.get(value, k) === "boolean"),
+    )
   );
 }

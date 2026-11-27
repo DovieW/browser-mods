@@ -1,3 +1,7 @@
+import {
+  parseScreenshotLabel,
+  type ScreenshotLabelStyle,
+} from "../../../core/clipboard/screenshot-label";
 import { stampScreenshot, stitchScreenshots } from "./screenshot-stamp";
 import { present } from "../../../core/present";
 
@@ -21,6 +25,7 @@ export function registerOffscreen() {
       secondUrl?: unknown;
       text?: unknown;
       url?: unknown;
+      labelStyle?: unknown;
     };
     if (message.target !== "offscreen" || sender.id !== chrome.runtime.id)
       return;
@@ -37,17 +42,20 @@ export function registerOffscreen() {
         respond({ ok: false });
         return;
       }
+      const labelStyle = parseScreenshotLabel(message.labelStyle);
+      const limit = labelStyle.screenshotLabelMaxLength;
       const url =
-        typeof message.url === "string" ? message.url.slice(0, 240) : "";
+        typeof message.url === "string" ? message.url.slice(0, limit) : "";
       const secondUrl =
         typeof message.secondUrl === "string"
-          ? message.secondUrl.slice(0, 240)
+          ? message.secondUrl.slice(0, limit)
           : "";
       void copyImage(
         message.dataUrl,
         url,
         message.secondDataUrl,
         secondUrl,
+        labelStyle,
       ).then(
         (ok) => {
           respond({ ok });
@@ -85,6 +93,7 @@ async function copyImage(
   url: string,
   secondDataUrl: string | undefined,
   secondUrl: string,
+  labelStyle: ScreenshotLabelStyle,
 ) {
   clearCopiedImage();
   let frame: HTMLIFrameElement | undefined;
@@ -103,9 +112,10 @@ async function copyImage(
           await (await fetch(secondDataUrl)).blob(),
           url,
           secondUrl,
+          labelStyle,
         )
       : url
-        ? await stampScreenshot(blob, url)
+        ? await stampScreenshot(blob, url, labelStyle)
         : blob;
     objectUrl = URL.createObjectURL(image);
     frame = document.createElement("iframe");

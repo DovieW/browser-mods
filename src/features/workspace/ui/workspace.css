@@ -216,3 +216,47 @@ footer span {
     flex-wrap: wrap;
   }
 }
+
+.screenshot-label-settings {
+  min-width: 0;
+  margin: 0 0 1rem;
+  padding: 0.75rem;
+  border: 1px solid var(--border, #30363d);
+  border-radius: 8px;
+}
+
+.screenshot-label-controls {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: 0.75rem;
+}
+
+.screenshot-label-control,
+.screenshot-label-controls > label {
+  display: grid;
+  gap: 0.35rem;
+  align-content: start;
+}
+
+.screenshot-label-controls input[type="color"] {
+  width: 100%;
+  min-height: 2.3rem;
+}
+
+.screenshot-label-preview {
+  display: flex;
+  min-height: 5rem;
+  margin-top: 0.75rem;
+  padding: 0.5rem;
+  background: #161b22;
+  border-radius: 6px;
+}
+
+.screenshot-label-preview span {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-family: monospace;
+  font-weight: bold;
+}

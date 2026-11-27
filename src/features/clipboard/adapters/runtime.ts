@@ -1,24 +1,39 @@
 import type { BrowserPort } from "../../../platform/chrome/browser";
-import type { CommandContext, Tab } from "../../../contracts/browser";
+import type {
+  CommandContext,
+  CommandHandler,
+  Tab,
+} from "../../../contracts/browser";
 import { commandError } from "../../../core/actions/errors";
 import { succeeded } from "../../../contracts/action-messages";
 import { createScreenshot } from "./screenshot";
+import type { ScreenshotLabelStyle } from "../../../core/clipboard/screenshot-label";
+
+function screenshotUrl(raw: string, limit: number): string {
+  const url = URL.parse(raw);
+  if (!url || (url.protocol !== "https:" && url.protocol !== "http:"))
+    return "";
+  url.username = "";
+  url.password = "";
+  return url.href.length > limit
+    ? url.href.slice(0, limit - 1) + "…"
+    : url.href;
+}
 
 export function createClipboard(
   chrome: Pick<
     BrowserPort,
     "tabs" | "windows" | "permissions" | "runtime" | "offscreen"
   >,
-  showScreenshotUrl: () => Promise<boolean>,
+  readScreenshotLabelStyle: () => Promise<ScreenshotLabelStyle>,
   activatePane: (tab: Tab) => Promise<unknown>,
 ) {
-  const captureScreenshot = createScreenshot(
-    chrome,
-    showScreenshotUrl,
-    activatePane,
-  );
+  const captureScreenshot = createScreenshot(chrome, activatePane);
   let creatingOffscreen: Promise<void> | undefined;
-  async function writeClipboard(type: string, payload: Record<string, string>) {
+  async function writeClipboard(
+    type: string,
+    payload: Record<string, unknown>,
+  ) {
     try {
       const url = chrome.runtime.getURL("offscreen.html");
       const contexts = await chrome.runtime.getContexts({
@@ -70,26 +85,31 @@ export function createClipboard(
     });
   }
 
-  async function copyScreenshot(
-    context: CommandContext,
-    _granted?: boolean,
-    invokedTab?: chrome.tabs.Tab,
-  ) {
-    const [first, second] = await captureScreenshot(context, invokedTab);
-    if (second) {
-      if (first.dataUrl.length + second.dataUrl.length > 60 * 1024 * 1024)
+  function screenshotCommand(withUrl: boolean): CommandHandler {
+    return async (context, _granted, invokedTab) => {
+      const [first, second] = await captureScreenshot(context, invokedTab);
+      if (
+        second &&
+        first.dataUrl.length + second.dataUrl.length > 60 * 1024 * 1024
+      )
         throw commandError("screenshot_failed");
+
+      const labelStyle = withUrl ? await readScreenshotLabelStyle() : undefined;
+      const label = (url: string) =>
+        labelStyle
+          ? screenshotUrl(url, labelStyle.screenshotLabelMaxLength)
+          : "";
       await writeClipboard("copy-image", {
-        ...first,
-        secondDataUrl: second.dataUrl,
-        secondUrl: second.url,
+        dataUrl: first.dataUrl,
+        ...(labelStyle ? { url: label(first.url), labelStyle } : {}),
+        ...(second ? { secondDataUrl: second.dataUrl } : {}),
+        ...(second && labelStyle ? { secondUrl: label(second.url) } : {}),
       });
-      return;
-    }
-    await writeClipboard(
-      "copy-image",
-      first.url ? { ...first } : { dataUrl: first.dataUrl },
-    );
+    };
   }
-  return { copyUrls, copyScreenshot };
+  return {
+    copyUrls,
+    copyScreenshot: screenshotCommand(true),
+    copyPlainScreenshot: screenshotCommand(false),
+  };
 }

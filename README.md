@@ -30,7 +30,8 @@ Four shortcuts are suggested by the extension on installation. Chrome can assign
 | Unload highlighted tab(s), keeping them open       |                           | Choose an unused key       |
 | Open highlighted web tabs in incognito             | Alt+Shift+N               |                            |
 | Toggle pin highlighted tab(s)                      | Alt+Shift+P               |                            |
-| Copy a screenshot of the visible page              | Alt+Shift+S               |                            |
+| Copy a screenshot with the page URL                | Alt+Shift+S               |                            |
+| Copy a screenshot without the page URL             |                           |                            |
 | New tab near current, in the same group            |                           | Ctrl+E                     |
 | New tab at the end of the current group            |                           | Ctrl+Shift+G               |
 | New ungrouped tab at the end of the window         |                           | Ctrl+Shift+E               |
@@ -62,7 +63,7 @@ Save unsent messages and form edits first: unloading can lose unsaved page state
 
 The existing **Copy links** command copies all highlighted tabs in tab-strip order, one URL per line. With one tab selected it still copies just that URL. Its command name is unchanged, so existing shortcut assignments carry over. It includes pinned/grouped tabs, keeps duplicate URLs, and ignores selections in other windows. If a selected tab has no available URL, it reports that instead of silently omitting the tab.
 
-**Copy screenshot** captures the active tab's visible page area as a PNG image that you can paste directly into an image-capable application. It excludes browser toolbars and does not capture the full scrolling page. Chrome grants temporary capture access through `activeTab` when you invoke an extension shortcut. Focus the page and press **Alt+Shift+S**, or assign another binding in Chrome's shortcut settings. File pages additionally require Chrome's **Allow access to file URLs** setting. Chrome may restrict captures through browser or administrator policies. By default, web screenshots include the page URL in yellow on black in the bottom-right corner. Long URLs are shortened to fit. Turn it off under **Options → Mods → Clipboard**.
+**Copy screenshot with URL** captures the active tab's visible page area as a PNG image that you can paste directly into an image-capable application. It excludes browser toolbars and does not capture the full scrolling page. Chrome grants temporary capture access through `activeTab` when you invoke an extension shortcut. Focus the page and press **Alt+Shift+S**, or assign another binding in Chrome's shortcut settings. File pages additionally require Chrome's **Allow access to file URLs** setting. Chrome may restrict captures through browser or administrator policies. By default, web screenshots include the page URL in yellow on black in the bottom-right corner. Long URLs are shortened to fit. Customize the label under **Options → Mods → Clipboard**. Use **Copy screenshot without URL** for an unmarked image and assign it a separate key in Chrome.
 
 The clipboard helper stays hidden and copies an actual image, not an image URL. Screenshots are never saved to disk, extension storage, or logs. If the active tab or its address changes during capture, the operation stops without replacing the clipboard. Capture failures also leave the clipboard alone; clipboard failures are reported. Very rapid captures can hit Chrome's rate limit. Global invocation while another app or Chrome app window is focused may lack capture access; focus the target page and retry when prompted.
 
@@ -165,7 +166,7 @@ The media browser fixture separately verifies pausing after site access is grant
 3. Enable incognito access and verify regular/incognito windows remain separate.
 4. Decline media access, grant it on a later attempt, pause a real player, and revoke access.
 5. Copy an HTTP URL and a `chrome://` URL, then paste into a text field.
-6. Highlight several tabs and copy links, then use **Copy screenshot** and paste into an image-capable application.
+6. Highlight several tabs and copy links, then use each screenshot command and paste into an image-capable application.
 
 The screenshot accelerator was also verified with real X11 key events against the production manifest in an isolated Xvfb display. To repeat this optional Linux check, start a private Xvfb display and run `SHORTCUTS_NATIVE=1 SHORTCUTS_ISOLATED_DISPLAY=1 DISPLAY=:<test-display> node tests/clipboard-browser.cjs`. It requires Python 3, libX11, and libXtst. The default headless clipboard fixture grants capture access only in a temporary extension copy; the main browser suite separately confirms the production extension rejects capture without a user grant. Desktop global invocation and incognito behavior still require checks on the target desktop.
 

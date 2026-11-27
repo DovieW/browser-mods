@@ -23,9 +23,25 @@ test("UI preferences reject invalid enums and bound untrusted arrays", () => {
   assert.equal(c.validatePreferences({ layout: "favorites" }), false);
   assert.equal(c.validatePreferences(c.parsePreferences(null)), true);
   const olderBackup = c.parsePreferences(null);
-  delete olderBackup.showScreenshotUrl;
+  for (const key of Object.keys(olderBackup))
+    if (key.startsWith("screenshotLabel")) delete olderBackup[key];
+  olderBackup.showScreenshotUrl = false;
   assert.equal(c.validatePreferences(olderBackup), true);
-  assert.equal(c.parsePreferences(olderBackup).showScreenshotUrl, true);
+  assert.equal(
+    c.parsePreferences(olderBackup).screenshotLabelCorner,
+    "bottom-right",
+  );
+  assert.equal(
+    c.parsePreferences(olderBackup).screenshotLabelTextColor,
+    "#ffeb00",
+  );
+  assert.equal(
+    c.validatePreferences({
+      ...c.parsePreferences(null),
+      screenshotLabelBackgroundColor: "transparent",
+    }),
+    false,
+  );
 
   assert.equal(
     c.validatePreferences({

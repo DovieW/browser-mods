@@ -6,15 +6,6 @@ import type { BrowserPort } from "../../../platform/chrome/browser";
 type CapturePort = Pick<BrowserPort, "tabs" | "windows" | "permissions">;
 type Image = { dataUrl: string; url: string };
 
-function screenshotUrl(raw: string): string {
-  const url = URL.parse(raw);
-  if (!url || (url.protocol !== "https:" && url.protocol !== "http:"))
-    return "";
-  url.username = "";
-  url.password = "";
-  return url.href.length > 240 ? url.href.slice(0, 239) + "…" : url.href;
-}
-
 function unchanged(current: Tab | undefined, original: Tab) {
   return (
     current?.id === original.id &&
@@ -25,10 +16,9 @@ function unchanged(current: Tab | undefined, original: Tab) {
 
 export function createScreenshot(
   chrome: CapturePort,
-  showScreenshotUrl: () => Promise<boolean>,
   activatePane: (tab: Tab) => Promise<unknown>,
 ) {
-  async function capture(tab: Tab, stamp: boolean): Promise<Image> {
+  async function capture(tab: Tab): Promise<Image> {
     let dataUrl: string;
     try {
       dataUrl = await chrome.tabs.captureVisibleTab(tab.windowId, {
@@ -51,7 +41,7 @@ export function createScreenshot(
     }
     if (!dataUrl.startsWith("data:image/png;base64,"))
       throw commandError("screenshot_failed");
-    return { dataUrl, url: stamp ? screenshotUrl(tab.url) : "" };
+    return { dataUrl, url: tab.url };
   }
 
   async function assertActive(tab: Tab) {
@@ -62,7 +52,7 @@ export function createScreenshot(
     if (!unchanged(active, tab)) throw commandError("screenshot_changed");
   }
 
-  async function captureSplit(original: Tab, partner: Tab, stamp: boolean) {
+  async function captureSplit(original: Tab, partner: Tab) {
     if (
       !(await chrome.permissions.contains({
         origins: SPLIT_SCREENSHOT_ORIGINS,
@@ -119,12 +109,12 @@ export function createScreenshot(
     chrome.windows.onFocusChanged.addListener(onFocus);
     try {
       await assertPair(original);
-      const first = await capture(original, stamp);
+      const first = await capture(original);
       await assertPair(original);
       switched = true;
       await activatePane(partner);
       await assertPair(partner);
-      const second = await capture(partner, stamp);
+      const second = await capture(partner);
       await assertPair(partner);
       return originalFirst
         ? ([first, second] as const)
@@ -165,7 +155,6 @@ export function createScreenshot(
     if (invokedTab && (invokedTab.id !== tab.id || invokedTab.url !== tab.url))
       throw commandError("screenshot_changed");
 
-    const stamp = await showScreenshotUrl();
     const splitId = tab.splitViewId;
     const partner =
       splitId === undefined || splitId < 0
@@ -174,10 +163,10 @@ export function createScreenshot(
             (candidate) =>
               candidate.id !== tab.id && candidate.splitViewId === splitId,
           );
-    if (partner) return captureSplit(tab, partner, stamp);
+    if (partner) return captureSplit(tab, partner);
 
     await assertActive(tab);
-    const image = await capture(tab, stamp);
+    const image = await capture(tab);
     await assertActive(tab);
     return [image] as const;
   };

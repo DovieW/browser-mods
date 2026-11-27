@@ -333,7 +333,8 @@ function App({
       .filter((r) => prefs.pins.includes(r.id))
       .sort((a, b) => prefs.pins.indexOf(a.id) - prefs.pins.indexOf(b.id));
   const aliases: Record<string, string> = {
-    "copy-screenshot": "screenshot capture image clipboard",
+    "copy-screenshot": "screenshot capture image clipboard with url",
+    "copy-screenshot-plain": "screenshot capture image clipboard plain no url",
     "copy-url": "link address clipboard",
     "pause-all-tabs": "audio video sound media",
   };

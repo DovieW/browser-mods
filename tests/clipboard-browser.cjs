@@ -261,21 +261,42 @@ const { execFileSync } = require("node:child_process");
 
     const settings = await context.newPage();
     await settings.goto(`chrome-extension://${id}/options.html#Mods`);
-    const stampSetting = settings.getByRole("checkbox", {
-      name: "Show page URL on screenshots",
+    const position = settings.getByLabel("Position", { exact: true });
+    assert.equal(await position.inputValue(), "bottom-right");
+    await position.selectOption("top-left");
+    await settings
+      .getByLabel("Background color", { exact: true })
+      .fill("#123456");
+    const maxLength = settings.getByLabel("Maximum URL length", {
+      exact: true,
     });
-    assert.equal(await stampSetting.isChecked(), true);
-    await stampSetting.uncheck();
-    await settings.getByText("Saved locally.", { exact: false }).waitFor();
+    await maxLength.fill("24");
+    await maxLength.press("Enter");
+    await settings.waitForFunction(async () => {
+      const config = await chrome.storage.sync.get(null);
+      return (
+        config["mods.ui.v1.screenshotLabelCorner"] === "top-left" &&
+        config["mods.ui.v1.screenshotLabelBackgroundColor"] === "#123456" &&
+        config["mods.ui.v1.screenshotLabelMaxLength"] === 24
+      );
+    });
     await settings.close();
     await page.bringToFront();
-    await run("copy-screenshot");
+    await run("copy-screenshot-plain");
     const plain = await sharp(Buffer.from((await paste()).files[0].bytes))
       .raw()
       .toBuffer({ resolveWithObject: true });
     assert.deepEqual(pixel(plain.data, plain.info, 791, 590), [20, 120, 220]);
+    assert.deepEqual(pixel(plain.data, plain.info, 8, 8), [20, 120, 220]);
+    await page.waitForTimeout(1100);
+    await run("copy-screenshot");
+    const custom = await sharp(Buffer.from((await paste()).files[0].bytes))
+      .raw()
+      .toBuffer({ resolveWithObject: true });
+    assert.deepEqual(pixel(custom.data, custom.info, 8, 8), [18, 52, 86]);
+    assert.deepEqual(pixel(custom.data, custom.info, 791, 590), [20, 120, 220]);
     console.log(
-      "PASS screenshot URL stamp is on by default and can be disabled in options",
+      "PASS plain shortcut omits URL and the labeled shortcut uses custom colors and placement",
     );
 
     await run("copy-url");
@@ -319,15 +340,6 @@ const { execFileSync } = require("node:child_process");
     console.log(
       "PASS worker failures retain a safe reason and show an actionable popup message",
     );
-    if (!native) {
-      const options = await context.newPage();
-      await options.goto(`chrome-extension://${id}/options.html#Mods`);
-      await options
-        .getByRole("checkbox", { name: "Show page URL on screenshots" })
-        .check();
-      await options.getByText("Saved locally.", { exact: false }).waitFor();
-      await options.close();
-    }
     const splitPartner = await worker.evaluate(async (source) => {
       if (!chrome.tabs.createSplit) return undefined;
       await chrome.windows.update(source.windowId, { focused: true });
@@ -393,7 +405,7 @@ const { execFileSync } = require("node:child_process");
           [Math.floor(info.width / 2), info.width],
         ]) {
           let yellow = false;
-          for (let y = Math.max(0, info.height - 45); y < info.height; y++) {
+          for (let y = 0; y < Math.min(45, info.height); y++) {
             for (let x = lo; x < hi; x++) {
               if (rgb(x, y).join(",") === "255,235,0") yellow = true;
             }
@@ -403,6 +415,29 @@ const { execFileSync } = require("node:child_process");
         console.log(
           "PASS split screenshot has both panes, a divider, and restores focus without changing history",
         );
+        await page.waitForTimeout(1100);
+        await run("copy-screenshot-plain");
+        const plainSplit = await sharp(
+          Buffer.from((await paste()).files[0].bytes),
+        )
+          .raw()
+          .toBuffer({ resolveWithObject: true });
+        assert.equal(plainSplit.info.width, info.width);
+        assert.equal(plainSplit.info.height, info.height);
+        assert.deepEqual(
+          pixel(plainSplit.data, plainSplit.info, 8, 8),
+          [20, 120, 220],
+        );
+        assert.deepEqual(
+          pixel(
+            plainSplit.data,
+            plainSplit.info,
+            Math.floor((info.width * 3) / 4),
+            8,
+          ),
+          [210, 60, 30],
+        );
+        console.log("PASS the plain split shortcut omits both URL labels");
       }
     }
     console.log(`Clipboard artifacts: ${root}`);

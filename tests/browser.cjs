@@ -856,7 +856,7 @@ const http = require("node:http");
       popup.on("pageerror", (error) => errors.push(error.message));
       await popup.goto(`chrome-extension://${id}/legacy.html`);
       await popup.locator(".shortcut-item").first().waitFor();
-      assert.equal(await popup.locator(".shortcut-item").count(), 24);
+      assert.equal(await popup.locator(".shortcut-item").count(), 25);
       assert.equal(await popup.locator("#backupTools").isVisible(), false);
       assert.equal(await popup.locator("#audioSection").isVisible(), false);
       assert.equal(
@@ -876,7 +876,7 @@ const http = require("node:http");
           1,
         );
       await popup.locator("#search").fill("copy");
-      assert.equal(await popup.locator(".shortcut-item").count(), 2);
+      assert.equal(await popup.locator(".shortcut-item").count(), 3);
       await popup.locator("#search").fill("copy-url");
       assert.equal(
         await popup
@@ -926,7 +926,7 @@ const http = require("node:http");
           async (key) => (await chrome.storage.sync.get(key))[key],
           key,
         );
-        assert.equal(Object.keys(original.bindings).length, 24);
+        assert.equal(Object.keys(original.bindings).length, 25);
         await popup.reload();
         await popup
           .locator("#memorySummary")

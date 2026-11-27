@@ -20,6 +20,8 @@ Warm popup latency is broadly unchanged; these samples do not establish a genera
 
 ## Repeat
 
+The configurable screenshot label adds one synced settings read to each labeled capture and no recurring work. Plain single-tab captures skip that read and reuse the original PNG. Split View still stitches the two panes for both commands. Both use the existing capture permissions and clipboard cleanup. In one before/after benchmark against the original Split View implementation (`ea156de`), first popup time was 151 to 166 ms and warm p95 was 106 to 95 ms. The benchmark does not time screenshot rendering.
+
 ```sh
 npm run test:performance
 MODS_BENCH_OUTPUT=/tmp/mods-current.json npm run test:performance

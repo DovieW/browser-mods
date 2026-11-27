@@ -78,7 +78,11 @@ export const commands = {
   "copy-screenshot": {
     shortcutGroup: "CLIPBOARD",
     suggested_key: "Alt+Shift+S",
-    description: "Copy a screenshot of the visible page to clipboard",
+    description: "Copy a screenshot of the visible page with URL",
+  },
+  "copy-screenshot-plain": {
+    shortcutGroup: "CLIPBOARD",
+    description: "Copy a screenshot of the visible page without URL",
   },
   "move-tabs-to-window": {
     shortcutGroup: "WINDOWS",
