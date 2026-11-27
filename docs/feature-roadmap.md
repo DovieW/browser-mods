@@ -12,6 +12,7 @@ The reference projects describe useful behavior. Implement our own selected work
 - **Extension package export:** save `extension-name-v1.2.3.zip`, using the actual package version and placing the extension files directly at ZIP root, with `manifest.json` at the root. A source browser/editor is not needed.
 - **Video saving:** deliver one usable video file with the expected picture and sound. MP4 is preferred where suitable, but another playable container is acceptable. A playlist, URL list, separate audio/video tracks or a directory of fragments is not the requested result.
 - **Mono audio:** per-tab toggle, reversible to normal audio.
+- **YouTube autoplay:** keep normal playback when a video opens in the foreground or its background tab is selected within three seconds. After that, require Play.
 - **Selection highlighting and refresh:** keep their basic workflows simple. Proposed matching options and refresh restart/interval behavior below are implementation defaults to verify against use, not extra requested feature sets.
 
 ## First useful scope per reference
@@ -89,6 +90,14 @@ Use scoped, user-started discovery in the selected tab. Attach any required netw
 Test direct MP4/WebM and representative non-DRM HLS/DASH, including separate audio, fragmented media, failures and cancellation. Acceptance is one file that opens in an ordinary local player, has expected duration/quality and sound, seeks, and stays synchronized. A successful HTTP download or a file named `.mp4` does not establish those properties. Live/opaque blob-player recording is a separate explicit capture workflow if real source cases require it; do not silently claim it is covered by segment downloading. DRM circumvention is outside this implementation. The user should not need to understand stream/container details to save a supported video.
 
 Source scope: [FetchV's advertised formats and boundaries](https://chromewebstore.google.com/detail/fetchv-video-downloader-f/nfmmmhanepmpifddlkkmihkalkoekpfd).
+
+### YouTube autoplay for background tabs
+
+Start with top-level YouTube watch pages, including playlist watch links. If the page opens in the active tab, let YouTube start normally. If it opens in a background tab, hold initial playback while the tab is inactive. Count the three seconds from when the video page opens, including time before the player is ready. Selecting the tab within three seconds lets YouTube start normally, even on a slow load. After more than three seconds in the background, switching to the tab keeps the video paused until the user presses Play. Once the video starts intentionally, switching tabs leaves it playing. Keep YouTube's Up Next setting independent.
+
+Prototype a YouTube-scoped playback gate early enough to prevent a burst of audio at load or on the first switch. Track tab activation and player readiness with events. Recheck when YouTube replaces the player during same-tab navigation. Tear down listeners on navigation or disable, with no polling and no changes to other sites. Test foreground opening, selection just before and after the cutoff, delayed player creation, several queued tabs, manual Play, and same-tab navigation. Verify on real YouTube as well as deterministic browser fixtures.
+
+References for the early-load and player-navigation behavior. [Chrome content scripts](https://developer.chrome.com/docs/extensions/develop/concepts/content-scripts) · [YouTube Enhancer releases](https://github.com/YouTube-Enhancer/extension/releases)
 
 ### Per-tab mono
 
