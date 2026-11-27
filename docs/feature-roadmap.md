@@ -15,6 +15,23 @@ The reference projects describe useful behavior. Implement our own selected work
 - **YouTube autoplay:** keep normal playback when a video opens in the foreground or its background tab is selected within three seconds. After that, require Play.
 - **Selection highlighting and refresh:** keep their basic workflows simple. Proposed matching options and refresh restart/interval behavior below are implementation defaults to verify against use, not extra requested feature sets.
 
+## Existing extensions to integrate
+
+Plan the popup, options page, and any UI that appears inside web pages before implementing these integrations. Review the existing UI and how the command palette should expose and run actions across modules. Use that plan to decide where each workflow belongs and how to sequence the integrations.
+
+Complete the existing [migration backlog](migration.md), including [Quick Bookmark](https://github.com/DovieW/quick-bookmark), [Dovie's Tab Discarder](https://github.com/DovieW/dovies-tab-discarder), [Middle Click to Search](https://github.com/DovieW/middle-click-search), and [Instant Omnivore Add](https://github.com/DovieW/instant-omnivore-add), along with the remaining shortcut and media-control work. Simple Shortcuts is the original Browser Mods project.
+
+Add these workflows to the integration backlog:
+
+- [Instant Bookmark](https://github.com/DovieW/instant-bookmark) for saving a bookmark directly from a keyboard shortcut. Plan how this works alongside Quick Bookmark's folder picker.
+- [Simple Tab Deduplicate](https://github.com/DovieW/simple-tab-deduplicate) for previewing duplicate tabs and choosing which ones to keep or close.
+- [Dovie's Site Blocker](https://github.com/DovieW/dovies-site-blocker) for site blocking, saved reasons, and recognition of links to those sites.
+- [Copy Root Domain](https://github.com/DovieW/copy-domain) for copying a link's root domain from its context menu.
+- [Right Click B&H Search](https://github.com/DovieW/bh-search) for searching B&H from the context menu.
+- **Window Hopper** for its window-switching workflow. Review the source workflow alongside Browser Mods' existing window commands during planning.
+
+[BarPilot](https://github.com/DovieW/barpilot), which switches bookmarks-bar profiles by site, is a long-term idea outside the near-term integration sequence. B&H Site Tools is out of scope. Browser Mods already handles Go Home Shortcut through its **Site home** command.
+
 ## First useful scope per reference
 
 | Reference                                                                                                                  | Module and deliverable                                                                                                                                     | Leave out initially                                                                                                                |
@@ -131,10 +148,12 @@ Sources: [offscreen limits](https://developer.chrome.com/docs/extensions/referen
 
 ## Proposed implementation order
 
+Plan the popup, options, in-page UI, and command palette first. Revisit the sequence below during that planning round.
+
 1. Prove the consequential paths early with disposable fixtures: full-image clipboard/large PDF, versioned root ZIP export, single-file HLS/DASH with audio, and mono playback/restoration. Resolve capture privileges, supported formats and peak-memory limits before a broad UI build.
 2. Build the Redact shell, lifecycle/permission services and extension manager **including profiles/bulk toggling** as the first substantial UI slice. Make package export reachable from it without coupling the two modules' internals.
 3. Deliver screenshot/clipboard/PDF and simple refresh; add per-tab mono after shared offscreen ownership is verified. Build selection and domain warnings as separately enabled modules with idle/teardown checks.
 4. Deliver supported single-file video saving behind its own job UI and lazy processing path. Keep format support tied to verified playback fixtures, not a universal downloader claim.
-5. Reconcile priorities with the existing Quick Bookmark, shortcut, tab-discarding, middle-click search, Omnivore and media-control migration work; do not delete those commitments or disable old extensions prematurely.
+5. Sequence the [existing extension integrations](#existing-extensions-to-integrate) alongside the reference workflows. Keep standalone installations available until their Browser Mods replacements are verified.
 
 This order is a proposal, not a delivery-date estimate or approval of every optional upstream feature. Each implementation gets a focused decision with actual permissions, lifecycle, failure cases, migration and measurements. Compare popup/worker cost with modules disabled as well as active workloads; page-count multiplication, idle wakeups and cleanup matter more than dependency bytes alone.

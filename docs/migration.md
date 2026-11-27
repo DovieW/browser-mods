@@ -18,6 +18,8 @@ The Redact workspace shell now provides configurable popup layouts, toolbar/cent
 
 ## Remaining implementation
 
+Plan the popup, options page, any in-page UI, and the command palette before implementing the extension integrations. See the [integration roadmap](feature-roadmap.md#existing-extensions-to-integrate) for the approved additions and deferred work.
+
 1. Complete shortcut UX: explicit global unassignment, import/export with rollback, 40KiB global history eviction, 100 revisions per shortcut locally, remaining shortcut-specific adapter cases and workload coverage. Initial adapter and performance checks now exist. Current synced history keeps ten per command per device; quota pressure surfaces a failure rather than silently discarding data. Legacy snapshot UI remains separate until this conversion is finished.
 2. Keep the extracted modules within enforced boundaries as functionality grows.
 3. Evaluate package fit, then port updated Quick Bookmark including ranking and playlist intent tests; configure OAuth for the retained extension identity and reconnect locally.
