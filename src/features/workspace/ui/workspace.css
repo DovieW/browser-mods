@@ -92,8 +92,8 @@ a {
 .popup-workspace {
   display: flex;
   flex-direction: column;
+  /* Chrome sizes the toolbar popup from its content. */
   height: 600px;
-  max-height: 100dvh;
 }
 .workspace-toolbar {
   display: flex;

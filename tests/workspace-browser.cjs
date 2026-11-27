@@ -27,6 +27,12 @@ const path = require("node:path");
     popup.on("pageerror", (e) => errors.push(e.message));
     await popup.goto(base + "popup.html");
     await popup.locator(".result").first().waitFor();
+    // Chrome can initially measure the toolbar popup in a short viewport.
+    await popup.setViewportSize({ width: 800, height: 153 });
+    assert.equal(
+      (await popup.locator(".popup-workspace").boundingBox()).height,
+      600,
+    );
     await popup.setViewportSize({ width: 1000, height: 700 });
     const { width, height } = await popup
       .locator(".popup-workspace")
