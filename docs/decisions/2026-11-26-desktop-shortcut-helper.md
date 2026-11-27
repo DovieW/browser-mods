@@ -1,0 +1,9 @@
+# Desktop shortcut helper
+
+Browser Mods keeps one Chrome extension. An optional native companion sends the one Bitwarden shortcut that the browser's page and DevTools keyboard events cannot trigger. Ship x64 releases for Windows and Kubuntu. The release workflow tests and builds on both platforms and publishes the archives and checksums under independent helper tags.
+
+The RDP worker checks the configured Microsoft sign-in origin, tracked portal tab, exact account, form stage and focus before requesting the fixed shortcut. The helper accepts bounded JSON messages from the installed Browser Mods ID for readiness or the fixed chord. It receives no page contents or credentials. Windows checks that the foreground executable is Chrome before calling SendInput. Kubuntu reuses the session's ydotool keyboard service and the browser focus check. The extension checks focus and document identity again before submitting the matching filled form. An unsuccessful attempt leaves the form available for the user. MFA stays in the existing manual handoff.
+
+The native host launches for each request and exits after its reply. The optional permission is requested only when enabling this setting. There are no new persistent content scripts or polling in the browser. A per-stage observer ends on success, navigation, focus loss or an eight-second deadline. Each stage sends at most one shortcut per run. Disabling the helper prevents further requests and submissions. No browser-side validation library was needed for the fixed action shape. The native binary uses serde_json for Chrome's framed JSON protocol and windows-sys for Win32 calls. It ships independently of the browser bundle.
+
+[Chrome native messaging](https://developer.chrome.com/docs/extensions/develop/concepts/native-messaging) · [Win32 foreground window](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getforegroundwindow)

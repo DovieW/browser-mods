@@ -18,9 +18,9 @@ const launch = "/f5vdi/rdp/launch/Common/test-desktop";
   const manifestFile = path.join(extension, "manifest.json");
   const manifest = JSON.parse(await fs.readFile(manifestFile, "utf8"));
   manifest.host_permissions = [portal + "/*", microsoft + "/*"];
-  manifest.permissions.push("downloads");
+  manifest.permissions.push("downloads", "nativeMessaging");
   manifest.optional_permissions = manifest.optional_permissions.filter(
-    (permission) => permission !== "downloads",
+    (permission) => !["downloads", "nativeMessaging"].includes(permission),
   );
   await fs.writeFile(manifestFile, JSON.stringify(manifest));
   const context = await chromium.launchPersistentContext(profile, {
@@ -120,6 +120,26 @@ const launch = "/f5vdi/rdp/launch/Common/test-desktop";
           <button onclick="document.body.textContent = 'Wrong account'">personal@example.test</button>
           <div role="button" onclick="document.getElementById('next').hidden = false"><span>work@example.test</span></div>
           <a id="next" hidden href="${portal}${webtop}">Finish manual sign-in</a>`,
+      }),
+    );
+
+    await context.route(microsoft + "/fixture/saml2", (route) =>
+      route.fulfill({
+        contentType: "text/html",
+        body: `<h1 id="loginHeader">Sign in</h1><main></main><script>
+          const main = document.querySelector("main");
+          function stage(password) {
+            document.getElementById("loginHeader").textContent = password ? "Enter password" : "Sign in";
+            main.innerHTML = password ? '<input id="i0118" type="password" name="passwd"><input id="idSIButton9" type="submit" value="Sign in">' :
+              '<input id="i0116" type="email" name="loginfmt"><input id="idSIButton9" type="submit" value="Next">';
+            document.getElementById("idSIButton9").onclick = () => {
+              if (!password) { stage(true); return; }
+              document.getElementById("loginHeader").textContent = "Verify your identity";
+              main.innerHTML = '<input name="otp"><button>Verify</button>';
+            };
+          }
+          stage(false);
+        </script>`,
       }),
     );
 
@@ -246,6 +266,61 @@ const launch = "/f5vdi/rdp/launch/Common/test-desktop";
       1,
       "A second filled F5 form must not be submitted in the same run",
     );
+    await worker.evaluate(
+      async ({ key, origin, pathname }) => {
+        await chrome.storage.local.set({
+          [key]: {
+            enabled: true,
+            policyOrigin: origin,
+            nativeAutofill: true,
+            portal: {
+              origin,
+              path: pathname,
+              desktop: "Work Desktop",
+              account: "work@example.test",
+            },
+          },
+        });
+        chrome.runtime.sendNativeMessage = async (host, message) => {
+          if (
+            host !== "com.doview.browser_mods" ||
+            message.action !== "bitwarden-autofill"
+          )
+            return { ok: false };
+          const [tab] = await chrome.tabs.query({
+            active: true,
+            lastFocusedWindow: true,
+          });
+          await chrome.scripting.executeScript({
+            target: { tabId: tab.id },
+            func: () => {
+              const field = document.activeElement;
+              if (!["i0116", "i0118"].includes(field.id))
+                throw Error("Unexpected focus");
+              field.value =
+                field.id === "i0116" ? "work@example.test" : "fixture";
+              document.body.dataset.nativeCalls = String(
+                Number(document.body.dataset.nativeCalls || 0) + 1,
+              );
+              field.dispatchEvent(new Event("input", { bubbles: true }));
+            },
+          });
+          return { ok: true };
+        };
+      },
+      { key: preferenceKey, origin: portal, pathname: webtop },
+    );
+    const helper = await context.newPage();
+    await helper.bringToFront();
+    await helper.goto(portal + "/my.policy?different");
+    await helper.getByText("Updated policy").waitFor();
+    await helper.goto(microsoft + "/fixture/saml2");
+    await helper.getByText("Verify your identity").waitFor({ timeout: 12000 });
+    assert.equal(
+      await helper.locator("body").getAttribute("data-native-calls"),
+      "2",
+    );
+    assert.equal(await helper.locator('input[name="otp"]').inputValue(), "");
     await worker.evaluate(
       ({ key, origin }) =>
         chrome.storage.local.set({

@@ -3,6 +3,17 @@ import type { Portal } from "../domain/portal";
 // Chrome serializes this function into an isolated world.
 export function selectMicrosoftAccount(expectedUrl: string, email: string) {
   if (location.href !== expectedUrl) return;
+  const loginForm = () =>
+    [
+      ...document.querySelectorAll<HTMLElement>(
+        "#loginHeader, h1, [role=heading]",
+      ),
+    ].some(
+      (heading) =>
+        heading.getClientRects().length > 0 &&
+        ["Sign in", "Enter password"].includes(heading.innerText.trim()),
+    );
+  if (loginForm()) return;
   const pick = () => {
     const visible = (element: HTMLElement) =>
       element.getClientRects().length > 0 &&
@@ -43,7 +54,7 @@ export function selectMicrosoftAccount(expectedUrl: string, email: string) {
   if (pick()) return;
   return new Promise<void>((resolve) => {
     const observer = new MutationObserver(() => {
-      if (pick()) finish();
+      if (pick() || loginForm()) finish();
     });
     const timer = setTimeout(finish, 5000);
     function finish() {

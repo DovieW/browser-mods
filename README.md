@@ -174,6 +174,10 @@ Last-active toggling and recent-tab traversal across windows were also checked i
 
 Icons are resized from the generated image at `assets/icon.png`; `npm run icons` renders all checked-in PNG sizes. The image-generation prompt is saved in `assets/icon-prompt.md`. Playwright and Sharp are development dependencies only.
 
+## Desktop helper
+
+The optional [desktop helper](native/shortcut-helper/README.md) invokes the Bitwarden shortcut during the RDP sign-in flow. It has separate releases for Windows and Kubuntu.
+
 ## Release packaging
 
 Run `npm run package` to create `/tmp/simple-shortcuts-release-<version>/simple-shortcuts-v<version>.zip`. It requires the `zip` command and includes only runtime files, icons, the license, README, and changelog. To choose another output directory, use `npm run package -- /path/to/output`.

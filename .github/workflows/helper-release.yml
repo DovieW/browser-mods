@@ -1,0 +1,61 @@
+name: Desktop helper release
+on:
+  push:
+    tags:
+      - "helper-v*"
+
+jobs:
+  package:
+    strategy:
+      matrix:
+        include:
+          - runner: ubuntu-22.04
+            platform: kubuntu-x64
+          - runner: windows-latest
+            platform: windows-x64
+    runs-on: ${{ matrix.runner }}
+    defaults:
+      run:
+        working-directory: native/shortcut-helper
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check tag
+        shell: bash
+        run: |
+          version=$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml)
+          test "$GITHUB_REF_NAME" = "helper-v$version"
+      - run: cargo test --locked
+      - run: cargo build --release --locked
+      - name: Package Kubuntu installer
+        if: runner.os == 'Linux'
+        run: tar -czf "browser-mods-${GITHUB_REF_NAME}-kubuntu-x64.tar.gz" -C target/release browser-mods-helper
+      - name: Package Windows installer
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: Compress-Archive -Path target/release/browser-mods-helper.exe -DestinationPath "browser-mods-${env:GITHUB_REF_NAME}-windows-x64.zip"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: helper-${{ matrix.platform }}
+          path: |
+            native/shortcut-helper/browser-mods-helper-v*.zip
+            native/shortcut-helper/browser-mods-helper-v*.tar.gz
+          if-no-files-found: error
+
+  publish:
+    needs: package
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: helper-*
+          merge-multiple: true
+          path: release
+      - name: Publish binaries and checksums
+        working-directory: release
+        run: |
+          sha256sum browser-mods-* > SHA256SUMS.txt
+          gh release create "$GITHUB_REF_NAME" browser-mods-* SHA256SUMS.txt --repo "$GITHUB_REPOSITORY" --latest=false --title "Browser Mods desktop helper ${GITHUB_REF_NAME#helper-}" --notes "Native Bitwarden shortcut helper for Google Chrome on Kubuntu and Windows (x64). Extract your platform archive, then run the helper with install and your Browser Mods extension ID."
+        env:
+          GH_TOKEN: ${{ github.token }}

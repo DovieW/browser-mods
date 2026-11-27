@@ -5,6 +5,7 @@ import {
   loadRdpPreferences,
   readRdpRun,
   setAutoSubmitF5,
+  setNativeAutofill,
   setPolicyAcceptance,
 } from "../adapters/storage";
 import {
@@ -121,6 +122,20 @@ export function RdpCard({
           Press Ctrl+Shift+P on the Microsoft username and password screens to
           fill with Bitwarden. Complete verification to continue.
         </p>
+      )}
+      {prefs?.enabled && prefs.portal?.account && (
+        <label className="check">
+          <input
+            type="checkbox"
+            checked={prefs.nativeAutofill === true}
+            disabled={busy}
+            onChange={(event) => {
+              const enabled = event.target.checked;
+              void save(() => setNativeAutofill(enabled));
+            }}
+          />
+          Use the desktop helper for Bitwarden autofill
+        </label>
       )}
       {prefs?.enabled && canConfigure && (
         <form

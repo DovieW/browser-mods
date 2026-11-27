@@ -13,12 +13,14 @@ export type Run = {
   restarted: boolean;
   started?: number;
   f5Submitted?: boolean;
+  microsoftShortcuts?: ("username" | "password")[];
 };
 export type Preferences = {
   enabled: boolean;
   portal?: Portal;
   policyOrigin?: string;
   autoSubmitF5?: boolean;
+  nativeAutofill?: boolean;
 };
 
 export function portalAddress(url: string) {
@@ -90,7 +92,13 @@ export function readPreferences(value: unknown): Preferences {
     typeof portal.account === "string" ? portal.account : undefined,
   );
   return parsed?.origin === portal.origin && parsed.path === portal.path
-    ? { ...preferences, portal: parsed }
+    ? {
+        ...preferences,
+        portal: parsed,
+        ...(parsed.account && raw.nativeAutofill === true
+          ? { nativeAutofill: true }
+          : {}),
+      }
     : preferences;
 }
 

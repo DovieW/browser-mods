@@ -17,7 +17,8 @@ import {
   selectMicrosoftAccount,
   submitFilledF5,
 } from "./page";
-import { loadRdpPreferences, readRdpRun } from "./storage";
+import { loadRdpPreferences, nativeHost, readRdpRun } from "./storage";
+import { microsoftForm, type MicrosoftStage } from "./microsoft";
 
 export function registerRdpHelper() {
   const scope = listenerScope();
@@ -87,6 +88,87 @@ export function registerRdpHelper() {
       (await currentUrl(id)) === url
     );
   };
+
+  async function runMicrosoftAutofill(
+    id: number,
+    url: string,
+    portal: Portal,
+    account: string,
+  ) {
+    const documentMatches = async () => {
+      const live = await loadRdpPreferences();
+      if (
+        !live.enabled ||
+        !live.nativeAutofill ||
+        live.portal?.origin !== portal.origin ||
+        live.portal.account !== account ||
+        !(await chrome.permissions.contains({
+          permissions: ["nativeMessaging"],
+          origins: [microsoftAccountOrigin + "/*"],
+        }))
+      )
+        return false;
+      const tab = await chrome.tabs.get(id);
+      return (
+        tab.url === url &&
+        !tab.pendingUrl &&
+        tab.active &&
+        (await chrome.windows.get(tab.windowId)).focused
+      );
+    };
+    if (!(await documentMatches())) return;
+    const run = await readRdpRun(id);
+    if (run?.phase !== "waiting") return;
+    const attempted = run.microsoftShortcuts ?? [];
+    const stages: MicrosoftStage[] = ["username", "password"];
+    const remaining = stages.filter((stage) => !attempted.includes(stage));
+    while (remaining.length) {
+      const detected = await result(id, microsoftForm, [
+        url,
+        account,
+        remaining,
+        "detect",
+      ]);
+      const stage = detected?.result;
+      if (!stage || !detected.documentId) return;
+      const focus = await result(
+        id,
+        microsoftForm,
+        [url, account, [stage], "focus"],
+        detected.documentId,
+      );
+      if (!focus?.result || !(await documentMatches())) return;
+      attempted.push(stage);
+      await write(id, { ...run, microsoftShortcuts: attempted });
+      if (!(await documentMatches())) return;
+      const reply: unknown = await chrome.runtime
+        .sendNativeMessage(nativeHost, { action: "bitwarden-autofill" })
+        .catch(() => null);
+      if (
+        !reply ||
+        typeof reply !== "object" ||
+        !("ok" in reply) ||
+        reply.ok !== true
+      )
+        return;
+      const filled = await result(
+        id,
+        microsoftForm,
+        [url, account, [stage], "wait"],
+        detected.documentId,
+      );
+      if (!filled?.result || !(await documentMatches())) return;
+      const submitted = await result(
+        id,
+        microsoftForm,
+        [url, account, [stage], "submit"],
+        detected.documentId,
+      );
+      if (!submitted?.result || stage === "password") return;
+      remaining.splice(remaining.indexOf(stage), 1);
+      if (!remaining.length || !(await documentMatches())) return;
+    }
+  }
 
   async function recoverLaunchError(
     portal: Portal,
@@ -180,8 +262,11 @@ export function registerRdpHelper() {
           live.enabled &&
           live.portal?.origin === portal.origin &&
           live.portal.account === portal.account
-        )
+        ) {
           await result(id, selectMicrosoftAccount, [url, portal.account]);
+          if (live.nativeAutofill && address.pathname.endsWith("/saml2"))
+            await runMicrosoftAutofill(id, url, portal, portal.account);
+        }
       }
       if (
         ownedTabs.has(id) &&
