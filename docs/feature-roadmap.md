@@ -51,6 +51,10 @@ On confirmed attachment, leave the system clipboard untouched. If no eligible co
 
 Acceptance covers stale or closed chats, conversation changes in the same tab, unsent draft preservation, unchanged clipboard on success, and accurate fallback feedback. Verify attachment against ChatGPT before relying on it, since the destination composer is owned by the site.
 
+### Streamline RDP file downloads
+
+**Proposed follow-up.** Investigate a user-started shortcut that takes an existing remote access portal session through to downloading the selected RDP file. Check whether an authenticated session can go straight to the download. When sign-in is needed, coordinate existing browser autofill and guide the user through the verification step. Confirm the expected download and stop on unexpected sign-in screens. Keep employer-specific configuration local and keep passwords and verification codes out of extension storage and logs.
+
 ### Extension profiles and versioned ZIPs
 
 The manager reads installed extension state on opening, then uses management events instead of polling. A profile records desired extension IDs, with always-on protection and Browser Mods excluded from disabling. Applying a profile shows its concrete changes; missing or policy-controlled extensions are reported, and failures do not erase the saved profile. Retain the actual pre-apply device state for explicit restore. Verify Chrome's user-gesture requirements through our UI/client/worker route. Sync profile definitions and deliberate preference edits, not unrequested activation changes on another device.
