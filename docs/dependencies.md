@@ -12,6 +12,8 @@ Performance remains the first priority: evaluate responsiveness, startup, memory
 
 The [initial comparison is complete](performance/ui-runtime-2026-11-16.md). **The user selected Redact for the redesigned extension-page UI.** Its tested native/Radix dialog interactions and direct-esbuild integration passed. The production popup/options/palette shell now uses Redact; retained maintenance views remain native. Pin and test exact components/adapters; do not assume blanket React compatibility or ship native React alongside Redact. The tested Preact/Radix pairing remains blocked. Other comparison candidates remain isolated in `experiments/ui-runtime/`; production imports no experiment code.
 
+The workspace uses the shadcn Input and Dropdown Menu source patterns with local CSS and the existing shared color tokens. The menu uses `@radix-ui/react-dropdown-menu` 2.2.1. The build resolves its React/React DOM imports to Redact and rejects native React bundles. The existing CSS pipeline styles both components. Radix is bundled only in the popup. The packaged menu fixture checks open, selection and keyboard focus restoration. [Input source](https://ui.shadcn.com/r/styles/new-york-v4/input.json) · [Dropdown Menu source](https://ui.shadcn.com/r/styles/new-york-v4/dropdown-menu.json)
+
 ## Next implementation: runtime validation with Zod
 
 **Recommend standard Zod as the next runtime dependency. Not installed yet.**

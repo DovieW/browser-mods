@@ -30,6 +30,12 @@ npm run performance:compare -- docs/performance/after-median.json /tmp/mods-curr
 
 Compare only matching hardware/browser/Node conditions. `MODS_BENCH_EXTENSION` and `MODS_BENCH_HARNESS` select a separately built baseline checkout. The comparison command flags meaningful regressions for repeated investigation; do not treat a single noisy sample as a release verdict. CI records a fresh benchmark artifact, not a cross-hardware comparison against this laptop.
 
+## Unified popup and Options navigation
+
+Three alternating before/after runs on the same Linux machine with Chromium 153.0.8010.12 used the standard 15-load fixture. Medians across runs were 157.8 → 157.0 ms for the first popup, 77.7 → 90.0 ms for warm p50, and 102.2 → 103.8 ms for warm p95. The repeated measurements stayed below the latency review threshold. An initial standalone post-change run measured 243.1 ms for the first popup. The alternating runs did not reproduce that result.
+
+Gzipped popup JavaScript grew from 35.1 to 64.7 KiB. The Radix dropdown is loaded only in the popup. Options moved from 37.9 to 38.6 KiB and the launcher from 35.0 to 33.7 KiB. The worker still contains neither Redact nor Radix. The navigation adds no permissions, polling, or persistent page scripts. The popup menu unmounts with the popup, options listeners detach with their view, and the in-page palette retains its on-demand lifecycle. The contextual controls in the workflow fixture do not ship.
+
 ## Automated protections and limits
 
 - Lifecycle tests verify zero recurring tab queries/writes/injections during idle quiescence and removal of runtime listeners on disposal.

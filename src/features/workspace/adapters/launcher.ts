@@ -25,12 +25,13 @@ export async function openPalette(api: BrowserPort) {
             const shadow = host.attachShadow({ mode: "closed" });
             const dialog = document.createElement("dialog");
             dialog.style.cssText =
-              "padding:0;border:1px solid #30363d;border-radius:12px;background:#0d1117;width:640px;max-width:94vw;height:520px;max-height:85vh;color:#e6edf3;";
+              "padding:0;border:1px solid #30363d;border-radius:12px;background:#0d1117;width:640px;max-width:94vw;height:420px;max-height:85vh;color:#e6edf3;";
             dialog.setAttribute("aria-label", "Browser Mods command palette");
             const frame = document.createElement("iframe");
             frame.src = url;
             frame.title = "Browser Mods command palette";
-            frame.style.cssText = "border:0;width:100%;height:100%;";
+            frame.style.cssText =
+              "display:block;border:0;width:100%;height:100%;";
             const close = () => {
               window.removeEventListener("message", connect);
               channel.port1.close();

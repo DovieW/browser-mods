@@ -3,7 +3,7 @@ import {
   screenshotLabelDefaults,
 } from "../../../core/clipboard/screenshot-label";
 
-export const sections = ["Tabs", "Clipboard", "Media"] as const;
+const sections = ["Tabs", "Clipboard", "Media"] as const;
 export type Section = (typeof sections)[number];
 export const preferenceDefaults = {
   layout: "favorites" as const,

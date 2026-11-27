@@ -16,11 +16,16 @@ const assert = require("node:assert/strict");
     path.join(extension, "manifest.json"),
     JSON.stringify(manifest),
   );
-  const server = http.createServer((q, r) =>
-    r.end(
-      '<title>Launcher fixture</title><button id="previous">Previous focus</button>',
-    ),
+  const preview = await fs.readFile(
+    path.join(__dirname, "fixtures/workspace-preview.html"),
   );
+  const server = http.createServer((request, response) => {
+    if (request.url === "/preview") response.end(preview);
+    else
+      response.end(
+        '<title>Launcher fixture</title><button id="previous">Previous focus</button>',
+      );
+  });
   await new Promise((r) => server.listen(0, "127.0.0.1", r));
   const context = await chromium.launchPersistentContext(profile, {
     channel: "chromium",
@@ -64,6 +69,10 @@ const assert = require("node:assert/strict");
     await frame.locator("#search").waitFor();
     await frame.locator("#search").fill("duplicate");
     assert.equal(await frame.locator(".result").count(), 1);
+    if (process.env.MODS_UI_ARTIFACTS)
+      await page.screenshot({
+        path: path.join(process.env.MODS_UI_ARTIFACTS, "palette.png"),
+      });
     await frame.locator("#search").fill("");
     await frame.locator("#search").press("Escape");
     await page.waitForFunction(
@@ -81,8 +90,46 @@ const assert = require("node:assert/strict");
     await page.waitForFunction(
       () => !document.getElementById("browser-mods-launcher"),
     );
+    await page.goto(`http://127.0.0.1:${server.address().port}/preview`);
+    await page.locator("#example").evaluate((element) => {
+      const range = document.createRange();
+      range.selectNodeContents(element);
+      getSelection().addRange(range);
+    });
+    await page.getByRole("button", { name: "Search selection" }).waitFor();
+    await page.getByRole("button", { name: "Search selection" }).click();
+    await page
+      .getByRole("status")
+      .getByText(/Search preview for/)
+      .waitFor();
+    await page.keyboard.press("Escape");
+    await page
+      .getByRole("button", { name: "Search selection" })
+      .waitFor({ state: "hidden" });
+    for (const [triggerName, dialogName, image] of [
+      ["Save to folder", "Save to folder", "folder-picker.png"],
+      ["Find duplicate tabs", "Review duplicate tabs", "duplicate-review.png"],
+    ]) {
+      const trigger = page.getByRole("button", {
+        name: triggerName,
+        exact: true,
+      });
+      await trigger.click();
+      const task = page.getByRole("dialog", { name: dialogName });
+      await task.waitFor();
+      if (process.env.MODS_UI_ARTIFACTS)
+        await page.screenshot({
+          path: path.join(process.env.MODS_UI_ARTIFACTS, image),
+        });
+      await page.keyboard.press("Escape");
+      await task.waitFor({ state: "hidden" });
+      assert.equal(
+        await trigger.evaluate((el) => el === document.activeElement),
+        true,
+      );
+    }
     console.log(
-      "PASS centered launcher handshake, scoped search, Escape, focus restoration, repeat invocation cleanup",
+      "PASS centered launcher handshake, scoped search, Escape, focus restoration, repeat invocation cleanup, and in-page workflow previews",
     );
   } finally {
     await context.close();

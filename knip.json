@@ -4,8 +4,6 @@
   "ignoreDependencies": [
     "@doview/mods-shared",
     "@eslint/js",
-    "@tanstack/redact",
-    "react",
-    "react-dom"
+    "@tanstack/redact"
   ]
 }

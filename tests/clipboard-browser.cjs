@@ -260,7 +260,7 @@ const { execFileSync } = require("node:child_process");
     );
 
     const settings = await context.newPage();
-    await settings.goto(`chrome-extension://${id}/options.html#Mods`);
+    await settings.goto(`chrome-extension://${id}/options.html#Screenshots`);
     const position = settings.getByLabel("Position", { exact: true });
     assert.equal(await position.inputValue(), "bottom-right");
     await position.selectOption("top-left");

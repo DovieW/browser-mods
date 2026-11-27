@@ -151,7 +151,9 @@ const launch = "/f5vdi/rdp/launch/Common/test-desktop";
     );
 
     const popup = await context.newPage();
-    await popup.goto(`chrome-extension://${id}/popup.html`);
+    await popup.goto(
+      `chrome-extension://${id}/options.html#RDP%20download%20helper`,
+    );
     const toggle = popup.getByRole("checkbox", { name: "RDP download helper" });
     await toggle.waitFor();
     assert.equal(await toggle.isChecked(), true);

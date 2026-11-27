@@ -39,6 +39,7 @@ for (const file of [
   "logo48.png",
   "logo128.png",
   "LICENSE",
+  "THIRD-PARTY-NOTICES",
 ])
   await cp(file, `dist/${file}`);
 await cp("src/features/workspace/ui/workspace.css", "dist/workspace.css");
@@ -69,6 +70,7 @@ const result = await build({
   define: { "process.env.NODE_ENV": '"production"' },
   alias: {
     react: "@tanstack/redact",
+    "react-dom": "@tanstack/redact/dom",
     "react-dom/client": "@tanstack/redact/dom-client",
     "react/jsx-runtime": "@tanstack/redact/jsx-runtime",
   },

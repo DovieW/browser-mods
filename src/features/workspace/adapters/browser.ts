@@ -2,7 +2,6 @@ import { SPLIT_SCREENSHOT_ORIGINS } from "../../../contracts/clipboard";
 import { succeeded } from "../../../contracts/action-messages";
 import { commandErrorMessage } from "../../../core/actions/errors";
 import { MEDIA_ORIGINS } from "../../../contracts/media";
-import { readShortcutSetup } from "../../../platform/messaging/shortcuts";
 import { readBrowserCommands } from "../../../platform/chrome/commands";
 import {
   readPreferences,
@@ -18,7 +17,6 @@ export function workspaceBrowser() {
     importPreferences,
     restorePreferences,
     watchPreferences,
-    readShortcutSetup,
     commands: () => readBrowserCommands(chrome.commands),
     async run(command: string) {
       if (
@@ -49,11 +47,23 @@ export function workspaceBrowser() {
         currentWindow: true,
       });
       return {
-        title: t?.title ?? "Current tab",
-        pinned: t?.pinned ?? false,
         id: t?.id,
         url: t?.url ?? "",
       };
+    },
+    async sourceTab(id: number) {
+      const [source, own] = await Promise.all([
+        chrome.tabs.get(id).catch(() => undefined),
+        chrome.tabs.getCurrent(),
+      ]);
+      if (
+        !source?.url ||
+        !own ||
+        source.windowId !== own.windowId ||
+        source.incognito !== own.incognito
+      )
+        return undefined;
+      return { id, url: source.url };
     },
     async tabs() {
       return (await chrome.tabs.query({ currentWindow: true })).map((t) => ({
@@ -87,6 +97,8 @@ export function workspaceBrowser() {
     error: async () =>
       (await chrome.storage.session.get("lastError")).lastError as
         { code: string; command: string } | undefined,
+    hasSplitScreenshotAccess: () =>
+      chrome.permissions.contains({ origins: SPLIT_SCREENSHOT_ORIGINS }),
     allowSplitScreenshots: () =>
       chrome.permissions.request({ origins: SPLIT_SCREENSHOT_ORIGINS }),
     permissions: () => chrome.permissions.getAll(),

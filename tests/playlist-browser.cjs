@@ -84,6 +84,7 @@ function video(duration, id = "one", list = "PL-fixture") {
       await page.goto(url);
       await page.bringToFront();
       await popup.goto(`chrome-extension://${id}/popup.html`);
+      await popup.getByRole("button", { name: "Media", exact: true }).click();
     }
     await show(playlistUrl);
     const card = popup.getByRole("region", {

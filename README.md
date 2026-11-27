@@ -8,13 +8,13 @@ Keyboard shortcuts for tabs, groups, windows, navigation, and media. Requires Ch
 
 This repository is being migrated into a unified browser toolkit. The existing runtime has been extracted into typed modules with tested architecture boundaries and a shared theme; other utility extensions have not yet been integrated. Their existing installations remain the working versions.
 
-Run `npm ci`, `npm run verify`, then load `dist/` as an unpacked extension. Use `npm run test:browser:packaged` for disposable-profile regression checks. The options page displays desired keys and per-device observed history. Chrome assignments still require manual editing. The Redact workspace provides configurable popup layouts, toolbar/centered palettes, settings search and synced customization. Assign the new Open Browser Mods command palette key in Chrome. Existing snapshot backups and tab behavior controls are linked from options. On a YouTube playlist, the toolbar popup shows its total or a subtotal if more entries need to load. See [UI interaction](docs/ui-interaction.md).
+Run `npm ci` and `npm run verify`, then load `dist/` as an unpacked extension. The popup opens to Favorites, with All actions and workflow categories in the left rail. On a YouTube playlist, open **Media** to see the duration. Use `npm run test:browser:packaged` for disposable-profile regression checks. See [UI interaction](docs/ui-interaction.md).
 
 See [architecture](docs/architecture.md), [feature admission and performance policy](docs/feature-admission.md), and [migration status](docs/migration.md). The shared standards repository is https://github.com/DovieW/dovies-mods-shared.
 
 ## Setup
 
-Open the extension popup and click **Edit keys**, or visit `chrome://extensions/shortcuts`. The popup shows your actual assignments, lets you search commands, and lists missing or changed bindings against a saved snapshot. The rows are read-only; assign keys in Chrome's shortcut settings.
+Open **Options → Shortcuts → Edit in Chrome**, or visit `chrome://extensions/shortcuts`, to assign keys. **Assignment history & recovery** shows differences from your saved setup. Assign **Open Browser Mods command palette** separately, then choose its placement in **Options → Appearance & controls**.
 
 This README describes the current source; see [the changelog](CHANGELOG.md) for released and unreleased changes. To install a [GitHub release](https://github.com/DovieW/browser-mods/releases), extract its extension ZIP, enable **Developer mode** at `chrome://extensions`, choose **Load unpacked**, and select the extracted directory. Load the built `dist/` directory for this migration version. After updating the files, click the extension's reload button there. An unpacked copy can have different shortcut assignments from the installed Web Store version. GitHub releases and Chrome Web Store publication are separate; the store version may lag.
 

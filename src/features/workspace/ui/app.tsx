@@ -1,12 +1,21 @@
-import { RdpCard } from "../../rdp-download/public-ui";
+import { Input } from "./input";
+import type { ActionMenu } from "./action-menu";
 import {
   PlaylistDurationCard,
   playlistTab,
 } from "../../playlist-duration/public-ui";
+import { shortCommandLabel } from "../../../ui/shortcut-labels";
 import { commandErrorMessage } from "../../../core/actions/errors";
 import type { OptionsProps } from "./options";
 import type { ComponentType } from "react";
-import { pages, planned, settings, type Result } from "./model";
+import {
+  featureRoutes,
+  pages,
+  settings,
+  workflow,
+  workflows,
+  type Result,
+} from "./model";
 import { createRoot } from "react-dom/client";
 import { useEffect, useRef, useState } from "react";
 import { commands } from "../../../core/actions/catalog";
@@ -24,11 +33,13 @@ function App({
   mode,
   initialPalette = false,
   Settings,
+  RowMenu,
 }: {
   port: WorkspacePort;
   mode: "popup" | "options" | "launcher";
   initialPalette?: boolean;
   Settings: ComponentType<OptionsProps> | undefined;
+  RowMenu: typeof ActionMenu | undefined;
 }) {
   const [prefs, setPrefs] = useState<Preferences>({ ...preferenceDefaults });
   const [ready, setReady] = useState(false),
@@ -43,44 +54,22 @@ function App({
     Awaited<ReturnType<WorkspacePort["bookmarks"]>>
   >([]);
   const [busy, setBusy] = useState(false);
-  const [shortcutDifferences, setShortcutDifferences] = useState(0);
-  useEffect(() => {
-    let alive = true;
-    const refresh = () => {
-      void port
-        .readShortcutSetup()
-        .then((s) => {
-          if (alive)
-            setShortcutDifferences(
-              Object.keys(s.desired).filter((k) => s.desired[k] !== s.actual[k])
-                .length,
-            );
-        })
-        .catch(fail);
-    };
-    refresh();
-    window.addEventListener("focus", refresh);
-    return () => {
-      alive = false;
-      window.removeEventListener("focus", refresh);
-    };
-  }, [port]);
+  const [section, setSection] = useState<string>("Favorites");
   const [current, setCurrent] = useState<
     Awaited<ReturnType<WorkspacePort["currentTab"]>>
   >({
-    title: "Current tab",
-    pinned: false,
     id: undefined,
     url: "",
   });
   useEffect(() => {
-    if (mode !== "options") void port.currentTab().then(setCurrent).catch(fail);
+    if (mode === "popup") void port.currentTab().then(setCurrent).catch(fail);
   }, [mode, port]);
   const playlist =
     mode === "popup" && !prefs.disabled.includes("Media")
       ? playlistTab(current.url)
       : null;
-  const [palette, setPalette] = useState(mode === "launcher" || initialPalette);
+  const palette = mode === "launcher" || initialPalette;
+  const browse = mode === "popup" && !palette;
   const input = useRef<HTMLInputElement>(null),
     connection = useRef<MessagePort | null>(null);
   const close = () => {
@@ -157,12 +146,11 @@ function App({
     };
   }, [mode]);
   useEffect(() => {
-    if (ready && (palette || prefs.layout === "commands"))
-      input.current?.focus();
-  }, [ready, palette, prefs.layout]);
+    if (ready && palette) input.current?.focus();
+  }, [ready, palette]);
   useEffect(() => {
     let alive = true;
-    if (prefs.searchMode === "everything" || scope === "tabs")
+    if ((prefs.searchMode === "everything" && query) || scope === "tabs")
       void port
         .tabs()
         .then((t) => {
@@ -172,7 +160,7 @@ function App({
     return () => {
       alive = false;
     };
-  }, [port, prefs.searchMode, scope]);
+  }, [port, prefs.searchMode, scope, Boolean(query)]);
   useEffect(() => {
     let alive = true;
     const timer = setTimeout(() => {
@@ -191,7 +179,7 @@ function App({
   }, [port, prefs.searchMode, query, scope]);
   useEffect(() => {
     setSelected(0);
-  }, [query, scope, prefs.layout]);
+  }, [query, scope, section]);
   useEffect(() => {
     document
       .getElementById(`result-${selected}`)
@@ -213,20 +201,28 @@ function App({
     }
   }
   async function openOptions(target: string) {
-    await port.open(port.url(`options.html#${encodeURIComponent(target)}`));
+    const source =
+      target === featureRoutes.RDP[1] && current.id !== undefined
+        ? `?sourceTab=${current.id}`
+        : "";
+    await port.open(
+      port.url(`options.html${source}#${encodeURIComponent(target)}`),
+    );
     close();
   }
-  const allActions: Result[] = Object.entries(commands)
-    .filter(([id]) => id !== "open-palette")
-    .map(([id, c]) => ({
-      id,
-      label: c.description,
-      group: actionSection(id),
-      key: keys[id] ?? "",
-      stay: ["pin-tab", "toggle-collapse-groups"].includes(id),
-      run: () => port.run(id),
-    }));
-  const enabled = allActions.filter((r) => !prefs.disabled.includes(r.group));
+  const allActions: Result[] = Object.entries(commands).map(([id, c]) => ({
+    id,
+    label: shortCommandLabel({ name: id, description: c.description }),
+    description: c.description,
+    group: actionSection(id),
+    setting: featureRoutes[actionSection(id)][1],
+    key: keys[id] ?? "",
+    stay: ["pin-tab", "toggle-collapse-groups"].includes(id),
+    run: () => port.run(id),
+  }));
+  const enabled = allActions.filter(
+    (r) => r.id !== "open-palette" && !prefs.disabled.includes(r.group),
+  );
   const byOrder = (a: Result, b: Result) => {
     const rank = (id: string) => {
       const i = prefs.order.indexOf(id);
@@ -237,7 +233,18 @@ function App({
   let results: Result[] = enabled
     .filter((r) => !prefs.hidden.includes(r.id))
     .sort(byOrder);
-  const finding = !!query || palette || prefs.layout === "commands" || !!scope;
+  const finding = !!query || palette || !!scope;
+  const categories = workflows.filter(
+    (name) =>
+      name === "Web tools" ||
+      name === "Bookmarks & reading" ||
+      results.some((action) => workflow(action) === name),
+  );
+  const activeSection =
+    categories.includes(section as (typeof workflows)[number]) ||
+    section === "All actions"
+      ? section
+      : "Favorites";
   if (finding) {
     if (scope === "tabs") results = [];
     if (scope === "bookmarks") results = [];
@@ -257,6 +264,7 @@ function App({
           run: () => {
             setScope("tabs");
             setQuery("");
+            input.current?.focus();
             return Promise.resolve();
           },
         },
@@ -269,6 +277,7 @@ function App({
             if (await port.requestBookmarks()) {
               setScope("bookmarks");
               setQuery("");
+              input.current?.focus();
             } else throw Error("Bookmark access declined.");
           },
         },
@@ -297,41 +306,37 @@ function App({
           run: () => port.open(b.url),
         })),
       );
-    if (prefs.includeDisabled || scope === "explore")
+    if (prefs.includeDisabled && !scope && query)
       results.push(
-        ...planned.map((p) => ({
-          id: `planned-${p}`,
-          label: p,
-          group: "Planned · not yet available",
-          stay: true,
-          run: () => openOptions("Mods"),
-        })),
         ...allActions
           .filter((r) => prefs.disabled.includes(r.group))
           .map((r) => ({
             ...r,
             label: `Enable ${r.group} to use: ${r.label}`,
             group: "Disabled",
-            stay: true,
-            run: () => openOptions("Mods"),
+            run: () => openOptions(r.setting ?? "Features"),
           })),
       );
-    if (!scope)
-      results.push({
-        id: "explore",
-        label: "Explore mods",
-        group: "Browser Mods",
-        stay: true,
-        run: () => {
-          setScope("explore");
-          setQuery("");
-          return Promise.resolve();
-        },
-      });
-  } else if (prefs.layout === "favorites")
+  } else if (activeSection === "Favorites") {
     results = results
       .filter((r) => prefs.pins.includes(r.id))
       .sort((a, b) => prefs.pins.indexOf(a.id) - prefs.pins.indexOf(b.id));
+  } else if (activeSection !== "All actions") {
+    results = results.filter((r) => workflow(r) === activeSection);
+    if (activeSection === "Bookmarks & reading")
+      results.push({
+        id: "find-bookmarks",
+        label: "Find bookmark",
+        group: "Bookmarks & reading",
+        stay: true,
+        run: async () => {
+          if (!(await port.requestBookmarks()))
+            throw Error("Bookmark access declined.");
+          setScope("bookmarks");
+          input.current?.focus();
+        },
+      });
+  }
   const aliases: Record<string, string> = {
     "copy-screenshot": "screenshot capture image clipboard with url",
     "copy-screenshot-plain": "screenshot capture image clipboard plain no url",
@@ -341,7 +346,7 @@ function App({
   const terms = query.toLocaleLowerCase().trim().split(/\s+/);
   results = results.filter((r) =>
     terms.every((t) =>
-      `${r.label} ${r.id} ${r.group} ${aliases[r.id] ?? ""}`
+      `${r.label} ${r.description ?? ""} ${r.id} ${workflow(r)} ${aliases[r.id] ?? ""}`
         .toLocaleLowerCase()
         .includes(t),
     ),
@@ -353,7 +358,6 @@ function App({
     setError("");
     try {
       await r.run();
-      if (r.stay) setCurrent(await port.currentTab());
       if (!r.stay) close();
     } catch (e) {
       fail(e);
@@ -361,36 +365,19 @@ function App({
       setBusy(false);
     }
   }
+  const groups =
+    !finding && activeSection === "All actions"
+      ? categories.filter((name) => results.some((r) => workflow(r) === name))
+      : [""];
+  const keyboardList = !browse || Boolean(query || scope);
   return (
-    <div className={mode === "options" ? "workspace options" : "workspace"}>
-      <header>
-        <div>
-          <span className="eyebrow">DOVIE’S</span>
+    <div
+      className={`workspace ${mode === "options" ? "options" : browse ? "popup-workspace" : "palette-workspace"}`}
+    >
+      {mode === "options" && (
+        <header>
           <h1>Browser Mods</h1>
-        </div>
-        {mode !== "options" ? (
-          <button
-            onClick={() => {
-              void openOptions(pages[0]);
-            }}
-          >
-            Options
-          </button>
-        ) : (
-          <span className="muted">Make your browser yours.</span>
-        )}
-      </header>
-      {mode !== "options" && shortcutDifferences > 0 && (
-        <p className="shortcut-warning">
-          {shortcutDifferences} shortcuts differ from your saved setup.{" "}
-          <button
-            onClick={() => {
-              void openOptions("Shortcuts");
-            }}
-          >
-            Review shortcuts
-          </button>
-        </p>
+        </header>
       )}
       {error && (
         <div role="alert" className="error">
@@ -419,49 +406,7 @@ function App({
         />
       ) : (
         <>
-          <div className="search">
-            <input
-              ref={input}
-              id="search"
-              type="search"
-              role="combobox"
-              aria-label={scope ? `Search ${scope}` : "Search Browser Mods"}
-              aria-expanded="true"
-              aria-controls="results"
-              aria-activedescendant={
-                results[selected] ? `result-${selected}` : undefined
-              }
-              placeholder={scope ? `Search ${scope}…` : "Search commands…"}
-              value={query}
-              onChange={(e) => {
-                setQuery(e.target.value);
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "ArrowDown" || e.key === "ArrowUp") {
-                  e.preventDefault();
-                  setSelected((i) =>
-                    results.length
-                      ? (i +
-                          (e.key === "ArrowDown" ? 1 : -1) +
-                          results.length) %
-                        results.length
-                      : 0,
-                  );
-                }
-                if (e.key === "Enter" && results[selected]) {
-                  e.preventDefault();
-                  void activate(results[selected]);
-                }
-                if (e.key === "Escape") {
-                  e.preventDefault();
-                  if (scope) {
-                    setScope("");
-                    setQuery("");
-                  } else if (query) setQuery("");
-                  else close();
-                }
-              }}
-            />
+          <header className="workspace-toolbar">
             {scope && (
               <button
                 onClick={() => {
@@ -473,120 +418,213 @@ function App({
                 Back
               </button>
             )}
-          </div>
-          {mode === "popup" && !query && !scope && (
-            <RdpCard url={current.url} tabId={current.id} />
-          )}
-          {playlist && current.id !== undefined && !query && !scope && (
-            <PlaylistDurationCard
-              key={`${current.id}:${playlist.page}:${playlist.list}`}
-              target={playlist}
-              tabId={current.id}
-              openPlaylist={port.open}
-            />
-          )}
-          {!finding && prefs.layout === "favorites" && <h2>Favorites</h2>}
-          <div id="results" role="listbox" aria-label="Available actions">
-            {(prefs.layout === "sections" && !finding
-              ? prefs.sections.filter(
-                  (s) => !prefs.hidden.includes(`section:${s}`),
-                )
-              : [""]
-            ).map((group) => (
-              <section key={group}>
-                {group && <h2>{group}</h2>}
-                {results
-                  .filter((r) => !group || r.group === group)
-                  .map((r) => {
-                    const index = results.indexOf(r);
-                    return (
-                      <button
-                        id={`result-${index}`}
-                        role="option"
-                        aria-selected={selected === index}
-                        disabled={busy}
-                        className={`shortcut-item result ${selected === index ? "selected" : ""}`}
-                        key={r.id}
-                        onClick={() => {
-                          void activate(r);
-                        }}
-                      >
-                        <span>
-                          {r.label}
-                          <small>{r.group}</small>
-                        </span>
-                        {r.key && <kbd>{r.key}</kbd>}
-                      </button>
-                    );
-                  })}
-              </section>
-            ))}
-            {!results.length && (
-              <p className="muted">
-                No matching actions. Try another search or explore mods.
-              </p>
-            )}
-          </div>
-          {!finding && prefs.layout === "favorites" && (
-            <section className="context">
-              <h2>Current tab</h2>
-              <p className="muted">{current.title}</p>
-              <button
-                onClick={() => {
-                  void activate({
-                    id: "pin-tab",
-                    stay: true,
-                    label: "Pin tab",
-                    group: "Tabs",
-                    run: () => port.run("pin-tab"),
-                  });
-                }}
-                disabled={prefs.disabled.includes("Tabs")}
-                aria-pressed={current.pinned}
-              >
-                Toggle pinned
-              </button>
-              <button
-                onClick={() => {
-                  void activate({
-                    id: "copy-url",
-                    label: "Copy URL",
-                    group: "Clipboard",
-                    run: () => port.run("copy-url"),
-                  });
-                }}
-                disabled={prefs.disabled.includes("Clipboard")}
-              >
-                Copy URL
-              </button>
-            </section>
-          )}
-          <footer>
-            <button
-              onClick={() => {
-                setPalette(true);
-                setScope("explore");
-                input.current?.focus();
+            <Input
+              ref={input}
+              id="search"
+              type="search"
+              role="combobox"
+              aria-label={scope ? `Search ${scope}` : "Search Browser Mods"}
+              aria-expanded={keyboardList}
+              aria-controls="results"
+              aria-activedescendant={
+                keyboardList && results[selected]
+                  ? `result-${selected}`
+                  : undefined
+              }
+              placeholder={scope ? `Search ${scope}…` : "Search actions…"}
+              value={query}
+              onChange={(e) => {
+                setQuery(e.target.value);
               }}
+              onKeyDown={(e) => {
+                if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+                  if (!keyboardList && results[0]) {
+                    e.preventDefault();
+                    document.getElementById("result-0")?.focus();
+                    return;
+                  }
+                  e.preventDefault();
+                  setSelected((index) =>
+                    results.length
+                      ? (index +
+                          (e.key === "ArrowDown" ? 1 : -1) +
+                          results.length) %
+                        results.length
+                      : 0,
+                  );
+                }
+                if (e.key === "Enter" && keyboardList && results[selected]) {
+                  e.preventDefault();
+                  void activate(results[selected]);
+                }
+                if (e.key === "Escape") {
+                  e.preventDefault();
+                  if (query) setQuery("");
+                  else if (scope) setScope("");
+                  else close();
+                }
+              }}
+            />
+            {mode === "popup" && (
+              <button
+                onClick={() => {
+                  void openOptions(pages[0]).catch(fail);
+                }}
+              >
+                Options
+              </button>
+            )}
+          </header>
+          <div className={browse ? "popup-layout" : "palette-layout"}>
+            {browse && (
+              <nav aria-label="Action categories" className="navigation">
+                {["Favorites", "All actions", ...categories].map((name) => (
+                  <button
+                    key={name}
+                    aria-current={name === activeSection ? "page" : undefined}
+                    onClick={() => {
+                      setSection(name);
+                      setQuery("");
+                      setScope("");
+                    }}
+                  >
+                    {name}
+                  </button>
+                ))}
+              </nav>
+            )}
+            <main
+              className="action-pane"
+              key={browse ? activeSection : "palette"}
             >
-              Explore mods
-            </button>
-            <span>↑ ↓ navigate · Enter run · Esc close</span>
-          </footer>
+              {browse && (
+                <h1>
+                  {scope
+                    ? `Find ${scope}`
+                    : query
+                      ? "Search results"
+                      : activeSection}
+                </h1>
+              )}
+              <div
+                id="results"
+                role={keyboardList ? "listbox" : undefined}
+                aria-label="Available actions"
+              >
+                {groups.map((group) => (
+                  <section
+                    key={group}
+                    role={keyboardList ? "presentation" : undefined}
+                  >
+                    {group && <h2>{group}</h2>}
+                    {results
+                      .filter((r) => !group || workflow(r) === group)
+                      .map((r) => {
+                        const index = results.indexOf(r);
+                        return (
+                          <div
+                            className="action-row"
+                            key={r.id}
+                            role={keyboardList ? "presentation" : undefined}
+                          >
+                            <button
+                              id={`result-${index}`}
+                              role={keyboardList ? "option" : undefined}
+                              aria-selected={
+                                keyboardList ? selected === index : undefined
+                              }
+                              disabled={busy}
+                              className={`shortcut-item result ${keyboardList && selected === index ? "selected" : ""}`}
+                              onClick={() => {
+                                void activate(r);
+                              }}
+                            >
+                              <span>{r.label}</span>
+                              {r.key && <kbd>{r.key}</kbd>}
+                            </button>
+                            {!keyboardList && r.setting && RowMenu && (
+                              <RowMenu
+                                label={r.label}
+                                pinned={prefs.pins.includes(r.id)}
+                                togglePin={() => {
+                                  void save(
+                                    "pins",
+                                    prefs.pins.includes(r.id)
+                                      ? prefs.pins.filter((id) => id !== r.id)
+                                      : [...prefs.pins, r.id],
+                                  );
+                                }}
+                                settings={() => {
+                                  void openOptions(r.setting ?? pages[0]).catch(
+                                    fail,
+                                  );
+                                }}
+                              />
+                            )}
+                          </div>
+                        );
+                      })}
+                  </section>
+                ))}
+              </div>
+              {!results.length &&
+                (finding || activeSection === "Favorites") && (
+                  <p className="muted">
+                    {finding
+                      ? "No matching actions."
+                      : "No favorites yet. Add actions from All actions."}
+                  </p>
+                )}
+              {browse && !finding && activeSection === "Web tools" && (
+                <button
+                  className="feature-link"
+                  onClick={() => {
+                    void openOptions(featureRoutes.RDP[1]).catch(fail);
+                  }}
+                >
+                  RDP download helper settings
+                </button>
+              )}
+              {browse &&
+                !finding &&
+                activeSection === "Media" &&
+                (playlist && current.id !== undefined ? (
+                  <PlaylistDurationCard
+                    key={`${current.id}:${playlist.page}:${playlist.list}`}
+                    target={playlist}
+                    tabId={current.id}
+                    openPlaylist={port.open}
+                  />
+                ) : (
+                  <p className="muted">
+                    Open a YouTube playlist to see its duration here.
+                  </p>
+                ))}
+            </main>
+          </div>
         </>
       )}
     </div>
   );
 }
-export function mountWorkspace(
-  mode: "popup" | "options" | "launcher",
+
+export function mountWorkspace({
+  mode,
   palette = false,
-  Settings?: ComponentType<OptionsProps>,
-) {
+  Settings,
+  RowMenu,
+}: {
+  mode: "popup" | "options" | "launcher";
+  palette?: boolean;
+  Settings?: ComponentType<OptionsProps>;
+  RowMenu?: typeof ActionMenu;
+}) {
   const port = workspaceBrowser();
   const container = document.getElementById("app");
   if (!container) throw Error("Missing app container");
-  if (mode === "launcher") document.body.classList.add("launcher");
+  document.body.classList.add(
+    mode === "popup" && palette ? "toolbar-palette" : mode,
+  );
   const root = createRoot(container);
   root.render(
     <App
@@ -594,6 +632,7 @@ export function mountWorkspace(
       mode={mode}
       initialPalette={palette}
       Settings={Settings}
+      RowMenu={RowMenu}
     />,
   );
   window.addEventListener(

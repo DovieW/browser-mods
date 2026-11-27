@@ -63,6 +63,7 @@ export function ScreenshotLabelSettings({ style, save }: Props) {
           <label key={key}>
             {label}
             <input
+              id={key}
               type="color"
               value={style[key]}
               onChange={(event) => {
@@ -75,6 +76,7 @@ export function ScreenshotLabelSettings({ style, save }: Props) {
           <label key={key}>
             {label}
             <input
+              id={key}
               type="number"
               key={style[key]}
               defaultValue={style[key]}

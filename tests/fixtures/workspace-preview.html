@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>In-page tools preview</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        background: #0d1117;
+        color: #e6edf3;
+        font:
+          14px/1.5 system-ui,
+          sans-serif;
+      }
+      body {
+        max-width: 690px;
+        margin: 40px auto;
+        padding: 0 18px;
+      }
+      button,
+      input {
+        font: inherit;
+        color: inherit;
+      }
+      button {
+        border: 1px solid #30363d;
+        border-radius: 6px;
+        background: #161b22;
+        padding: 5px 10px;
+        cursor: pointer;
+      }
+      button:hover {
+        background: #21262d;
+      }
+      :focus-visible {
+        outline: 2px solid #58a6ff;
+        outline-offset: 2px;
+      }
+      [hidden] {
+        display: none;
+      }
+      #context {
+        position: fixed;
+        z-index: 1;
+      }
+      dialog {
+        width: min(440px, 90vw);
+        padding: 16px;
+        border: 1px solid #30363d;
+        border-radius: 10px;
+        color: inherit;
+        background: #0d1117;
+      }
+      dialog::backdrop {
+        background: #010409b3;
+      }
+      header,
+      footer {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+      }
+      footer {
+        justify-content: flex-end;
+        margin-top: 14px;
+      }
+      h2 {
+        margin: 0;
+        font-size: 17px;
+      }
+      label {
+        display: flex;
+        gap: 8px;
+        padding: 8px 0;
+        border-bottom: 1px solid #21262d;
+      }
+      small {
+        color: #8b949e;
+        margin-left: auto;
+      }
+      .primary {
+        background: #238636;
+        border-color: #2ea043;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>In-page tools preview</h1>
+    <p id="example">Select this sample text to see a contextual control.</p>
+    <button id="context" hidden>Search selection</button>
+    <button data-tool="folders">Save to folder</button>
+    <button data-tool="duplicates">Find duplicate tabs</button>
+    <p id="feedback" role="status"></p>
+    <dialog aria-labelledby="task-title">
+      <form method="dialog">
+        <header>
+          <button value="back">Back</button>
+          <h2 id="task-title"></h2>
+        </header>
+        <div id="choices"></div>
+        <footer><button class="primary" value="confirm"></button></footer>
+      </form>
+    </dialog>
+    <script>
+      const example = document.querySelector("#example");
+      const control = document.querySelector("#context");
+      const dialog = document.querySelector("dialog");
+      const feedback = document.querySelector("#feedback");
+      const choices = document.querySelector("#choices");
+      const confirm = dialog.querySelector(".primary");
+      const tasks = {
+        folders: {
+          title: "Save to folder",
+          action: "Save bookmark",
+          type: "radio",
+          rows: [
+            ["Work", "Bookmarks bar"],
+            ["Reading list", "Other bookmarks"],
+          ],
+        },
+        duplicates: {
+          title: "Review duplicate tabs",
+          action: "Close selected tab",
+          type: "checkbox",
+          rows: [
+            ["Documentation", "Keep · Window 1"],
+            ["Documentation", "Duplicate · Window 2"],
+          ],
+        },
+      };
+      document.addEventListener("selectionchange", () => {
+        const selection = getSelection();
+        control.hidden =
+          selection.isCollapsed || !example.contains(selection.anchorNode);
+        if (control.hidden) return;
+        const rect = selection.getRangeAt(0).getBoundingClientRect();
+        control.style.top = Math.max(0, rect.top - 34) + "px";
+        control.style.left = rect.left + "px";
+      });
+      control.addEventListener("pointerdown", (event) =>
+        event.preventDefault(),
+      );
+      control.addEventListener("click", () => {
+        feedback.textContent =
+          "Search preview for: " + getSelection().toString();
+      });
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape" && !dialog.open) control.hidden = true;
+      });
+      for (const trigger of document.querySelectorAll("[data-tool]")) {
+        trigger.addEventListener("click", () => {
+          const task = tasks[trigger.dataset.tool];
+          document.querySelector("#task-title").textContent = task.title;
+          confirm.textContent = task.action;
+          choices.replaceChildren(
+            ...task.rows.map(([text, info], index) => {
+              const row = document.createElement("label");
+              const input = document.createElement("input");
+              input.type = task.type;
+              input.name = "choice";
+              input.checked = task.type === "radio" ? index === 0 : index === 1;
+              input.disabled = task.type === "checkbox" && index === 0;
+              const detail = document.createElement("small");
+              detail.textContent = info;
+              row.append(input, text, detail);
+              return row;
+            }),
+          );
+          dialog.returnValue = "";
+          dialog.showModal();
+        });
+      }
+      dialog.addEventListener("close", () => {
+        if (dialog.returnValue === "confirm")
+          feedback.textContent = "Preview complete";
+      });
+    </script>
+  </body>
+</html>
