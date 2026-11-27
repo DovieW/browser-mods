@@ -75,5 +75,6 @@ test("every manifest command has a handler and at most four defaults", () => {
   assert.deepEqual(manifest.optional_host_permissions, [
     "http://*/*",
     "https://*/*",
+    "<all_urls>",
   ]);
 });

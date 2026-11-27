@@ -23,6 +23,8 @@ const COMMAND_ERROR_MESSAGES = {
   clipboard_failed: "Could not copy to the clipboard. Try the shortcut again.",
   screenshot_permission:
     "Chrome has not granted capture access to this tab. Focus the page and press the screenshot shortcut again.",
+  screenshot_split_permission:
+    "To capture both panes, open Browser Mods Options, then Mods, and select Allow split screenshots.",
   screenshot_changed:
     "The active page changed during capture. Try the screenshot shortcut again.",
   screenshot_busy:

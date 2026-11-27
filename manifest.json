@@ -25,7 +25,7 @@
     "service_worker": "background.js"
   },
   "minimum_chrome_version": "127",
-  "optional_host_permissions": ["http://*/*", "https://*/*"],
+  "optional_host_permissions": ["http://*/*", "https://*/*", "<all_urls>"],
   "options_ui": {
     "page": "options.html",
     "open_in_tab": true

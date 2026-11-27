@@ -1,3 +1,4 @@
+import { SPLIT_SCREENSHOT_ORIGINS } from "../../../contracts/clipboard";
 import { succeeded } from "../../../contracts/action-messages";
 import { commandErrorMessage } from "../../../core/actions/errors";
 import { MEDIA_ORIGINS } from "../../../contracts/media";
@@ -86,6 +87,8 @@ export function workspaceBrowser() {
     error: async () =>
       (await chrome.storage.session.get("lastError")).lastError as
         { code: string; command: string } | undefined,
+    allowSplitScreenshots: () =>
+      chrome.permissions.request({ origins: SPLIT_SCREENSHOT_ORIGINS }),
     permissions: () => chrome.permissions.getAll(),
     revoke: (origins: string[]) => chrome.permissions.remove({ origins }),
   };

@@ -1,20 +1,22 @@
 import type { BrowserPort } from "../../../platform/chrome/browser";
 import type { CommandContext, Tab } from "../../../contracts/browser";
-import { commandError, commandErrorCode } from "../../../core/actions/errors";
+import { commandError } from "../../../core/actions/errors";
 import { succeeded } from "../../../contracts/action-messages";
-function screenshotUrl(raw: string): string {
-  const url = URL.parse(raw);
-  if (!url || (url.protocol !== "https:" && url.protocol !== "http:"))
-    return "";
-  url.username = "";
-  url.password = "";
-  return url.href.length > 240 ? url.href.slice(0, 239) + "…" : url.href;
-}
+import { createScreenshot } from "./screenshot";
 
 export function createClipboard(
-  chrome: Pick<BrowserPort, "tabs" | "runtime" | "offscreen">,
+  chrome: Pick<
+    BrowserPort,
+    "tabs" | "windows" | "permissions" | "runtime" | "offscreen"
+  >,
   showScreenshotUrl: () => Promise<boolean>,
+  activatePane: (tab: Tab) => Promise<unknown>,
 ) {
+  const captureScreenshot = createScreenshot(
+    chrome,
+    showScreenshotUrl,
+    activatePane,
+  );
   let creatingOffscreen: Promise<void> | undefined;
   async function writeClipboard(type: string, payload: Record<string, string>) {
     try {
@@ -68,68 +70,26 @@ export function createClipboard(
     });
   }
 
-  async function assertScreenshotTarget(tab: Tab) {
-    const [active] = await chrome.tabs.query({
-      windowId: tab.windowId,
-      active: true,
-    });
-    if (
-      !active ||
-      active.id !== tab.id ||
-      active.url !== tab.url ||
-      active.pendingUrl
-    )
-      throw commandError("screenshot_changed");
-  }
-
   async function copyScreenshot(
     context: CommandContext,
     _granted?: boolean,
     invokedTab?: chrome.tabs.Tab,
   ) {
-    const tab = context.active;
-    if (!tab) throw commandError("no_tab");
-    if (invokedTab && (invokedTab.id !== tab.id || invokedTab.url !== tab.url))
-      throw commandError("screenshot_changed");
-    const stampUrl = await showScreenshotUrl();
-    await assertScreenshotTarget(tab);
-    let dataUrl;
-    try {
-      dataUrl = await chrome.tabs.captureVisibleTab(context.window.id, {
-        format: "png",
+    const [first, second] = await captureScreenshot(context, invokedTab);
+    if (second) {
+      if (first.dataUrl.length + second.dataUrl.length > 60 * 1024 * 1024)
+        throw commandError("screenshot_failed");
+      await writeClipboard("copy-image", {
+        ...first,
+        secondDataUrl: second.dataUrl,
+        secondUrl: second.url,
       });
-    } catch (error) {
-      if (
-        /activeTab|<all_urls>|permission|Cannot access/i.test(
-          error &&
-            typeof error === "object" &&
-            "message" in error &&
-            typeof error.message === "string"
-            ? error.message
-            : "",
-        )
-      )
-        throw commandError("screenshot_permission");
-      if (
-        /MAX_CAPTURE_VISIBLE_TAB|too many|quota|exceeded/i.test(
-          error &&
-            typeof error === "object" &&
-            "message" in error &&
-            typeof error.message === "string"
-            ? error.message
-            : "",
-        )
-      )
-        throw commandError("screenshot_busy");
-      if (commandErrorCode(error) === "no_tab") throw commandError("no_tab");
-      throw commandError("screenshot_failed");
+      return;
     }
-    // Never put a capture of a newly activated/navigated tab on the clipboard.
-    await assertScreenshotTarget(tab);
-    if (!dataUrl.startsWith("data:image/png;base64,"))
-      throw commandError("screenshot_failed");
-    const url = stampUrl ? screenshotUrl(tab.url) : "";
-    await writeClipboard("copy-image", url ? { dataUrl, url } : { dataUrl });
+    await writeClipboard(
+      "copy-image",
+      first.url ? { ...first } : { dataUrl: first.dataUrl },
+    );
   }
   return { copyUrls, copyScreenshot };
 }

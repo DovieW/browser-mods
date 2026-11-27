@@ -1,4 +1,4 @@
-import { stampScreenshot } from "./screenshot-stamp";
+import { stampScreenshot, stitchScreenshots } from "./screenshot-stamp";
 import { present } from "../../../core/present";
 
 let releaseCopiedImage: (() => void) | undefined;
@@ -17,6 +17,8 @@ export function registerOffscreen() {
       target?: unknown;
       type?: unknown;
       dataUrl?: unknown;
+      secondDataUrl?: unknown;
+      secondUrl?: unknown;
       text?: unknown;
       url?: unknown;
     };
@@ -25,14 +27,28 @@ export function registerOffscreen() {
     if (message.type === "copy-image") {
       if (
         typeof message.dataUrl !== "string" ||
-        !message.dataUrl.startsWith("data:image/png;base64,")
+        !message.dataUrl.startsWith("data:image/png;base64,") ||
+        (message.secondDataUrl !== undefined &&
+          (typeof message.secondDataUrl !== "string" ||
+            !message.secondDataUrl.startsWith("data:image/png;base64,") ||
+            message.dataUrl.length + message.secondDataUrl.length >
+              60 * 1024 * 1024))
       ) {
         respond({ ok: false });
         return;
       }
       const url =
         typeof message.url === "string" ? message.url.slice(0, 240) : "";
-      void copyImage(message.dataUrl, url).then(
+      const secondUrl =
+        typeof message.secondUrl === "string"
+          ? message.secondUrl.slice(0, 240)
+          : "";
+      void copyImage(
+        message.dataUrl,
+        url,
+        message.secondDataUrl,
+        secondUrl,
+      ).then(
         (ok) => {
           respond({ ok });
         },
@@ -64,7 +80,12 @@ export function registerOffscreen() {
   });
 }
 
-async function copyImage(dataUrl: string, url: string) {
+async function copyImage(
+  dataUrl: string,
+  url: string,
+  secondDataUrl: string | undefined,
+  secondUrl: string,
+) {
   clearCopiedImage();
   let frame: HTMLIFrameElement | undefined;
   let objectUrl: string | undefined;
@@ -76,9 +97,17 @@ async function copyImage(dataUrl: string, url: string) {
   };
   try {
     const blob = await (await fetch(dataUrl)).blob();
-    objectUrl = URL.createObjectURL(
-      url ? await stampScreenshot(blob, url) : blob,
-    );
+    const image = secondDataUrl
+      ? await stitchScreenshots(
+          blob,
+          await (await fetch(secondDataUrl)).blob(),
+          url,
+          secondUrl,
+        )
+      : url
+        ? await stampScreenshot(blob, url)
+        : blob;
+    objectUrl = URL.createObjectURL(image);
     frame = document.createElement("iframe");
     const loaded = new Promise((resolve, reject) => {
       present(frame).onload = resolve;

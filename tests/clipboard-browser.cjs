@@ -43,7 +43,8 @@ const { execFileSync } = require("node:child_process");
   }
   const server = http.createServer((request, response) => {
     response.writeHead(200, { "Content-Type": "text/html" });
-    response.end(`<title>${title} ${request.url}</title><style>html,body{margin:0;background:rgb(20,120,220);height:2000px}textarea{margin:20px}</style><textarea aria-label="Paste target"></textarea><script>
+    const color = request.url === "/two" ? "210,60,30" : "20,120,220";
+    response.end(`<title>${title} ${request.url}</title><style>html,body{margin:0;background:rgb(${color});height:2000px}textarea{margin:20px}</style><textarea aria-label="Paste target"></textarea><script>
       window.pasted=null;
       document.addEventListener('paste', async event => {
         event.preventDefault();
@@ -318,6 +319,15 @@ const { execFileSync } = require("node:child_process");
     console.log(
       "PASS worker failures retain a safe reason and show an actionable popup message",
     );
+    if (!native) {
+      const options = await context.newPage();
+      await options.goto(`chrome-extension://${id}/options.html#Mods`);
+      await options
+        .getByRole("checkbox", { name: "Show page URL on screenshots" })
+        .check();
+      await options.getByText("Saved locally.", { exact: false }).waitFor();
+      await options.close();
+    }
     const splitPartner = await worker.evaluate(async (source) => {
       if (!chrome.tabs.createSplit) return undefined;
       await chrome.windows.update(source.windowId, { focused: true });
@@ -336,6 +346,64 @@ const { execFileSync } = require("node:child_process");
         [base + "/one", base + "/two"].join("\n"),
       );
       console.log("PASS both native split-view URLs paste in tab-strip order");
+      if (!native) {
+        await worker.evaluate(
+          (id) => chrome.tabs.update(id, { active: true }),
+          splitPartner,
+        );
+        const before = await worker.evaluate(async () => {
+          await historyQueue;
+          return (await chrome.storage.session.get("tabHistory")).tabHistory;
+        });
+        await page.waitForTimeout(1100);
+        await run("copy-screenshot");
+        const restored = await worker.evaluate(async (windowId) => {
+          const [active] = await chrome.tabs.query({ windowId, active: true });
+          return active.id;
+        }, source.windowId);
+        assert.equal(restored, splitPartner);
+        const after = await worker.evaluate(async () => {
+          await historyQueue;
+          return (await chrome.storage.session.get("tabHistory")).tabHistory;
+        });
+        assert.deepEqual(after, before);
+        await page.bringToFront();
+        const image = (await paste()).files[0];
+        assert.equal(image.type, "image/png");
+        const { data, info } = await sharp(Buffer.from(image.bytes))
+          .raw()
+          .toBuffer({ resolveWithObject: true });
+        const rgb = (x, y) => {
+          const offset = (y * info.width + x) * info.channels;
+          return [...data.subarray(offset, offset + 3)];
+        };
+        const y = Math.floor(info.height / 2);
+        assert.deepEqual(rgb(Math.floor(info.width / 4), y), [20, 120, 220]);
+        assert.deepEqual(
+          rgb(Math.floor((info.width * 3) / 4), y),
+          [210, 60, 30],
+        );
+        assert.ok(
+          Array.from({ length: info.width }, (_, x) =>
+            rgb(x, y).join(","),
+          ).includes("48,54,61"),
+        );
+        for (const [lo, hi] of [
+          [0, Math.floor(info.width / 2)],
+          [Math.floor(info.width / 2), info.width],
+        ]) {
+          let yellow = false;
+          for (let y = Math.max(0, info.height - 45); y < info.height; y++) {
+            for (let x = lo; x < hi; x++) {
+              if (rgb(x, y).join(",") === "255,235,0") yellow = true;
+            }
+          }
+          assert.ok(yellow, "Each pane has a URL stamp");
+        }
+        console.log(
+          "PASS split screenshot has both panes, a divider, and restores focus without changing history",
+        );
+      }
     }
     console.log(`Clipboard artifacts: ${root}`);
   } finally {

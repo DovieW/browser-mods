@@ -825,6 +825,55 @@ test("screenshot captures the active tab once and sends PNG without storing imag
   assert.equal(JSON.stringify(h.session).includes("data:image"), false);
 });
 
+test("split screenshots require explicit capture access before switching panes", async () => {
+  const h = createHarness({
+    permission: false,
+    tabs: [
+      { id: 1, active: true, splitViewId: 10, url: "https://left.test/" },
+      { id: 2, splitViewId: 10, url: "https://right.test/" },
+    ],
+  });
+  await assert.rejects(h.run("copy-screenshot"), {
+    code: "screenshot_split_permission",
+  });
+  assert.ok(!h.calls.some(([kind]) => kind === "capture" || kind === "update"));
+});
+
+test("split screenshot restores focus after a second capture fails", async () => {
+  let captures = 0;
+  const h = createHarness({
+    tabs: [
+      { id: 1, active: true, splitViewId: 10, url: "https://left.test/" },
+      { id: 2, splitViewId: 10, url: "https://right.test/" },
+    ],
+    afterCapture() {
+      if (++captures === 2) throw Error("Browser capture failed");
+    },
+  });
+  await assert.rejects(h.run("copy-screenshot"), { code: "screenshot_failed" });
+  assert.equal((await h.chrome.tabs.query({ active: true }))[0].id, 1);
+  assert.ok(!h.calls.some(([kind]) => kind === "message"));
+});
+
+test("split screenshot stops when the user switches to a different tab", async () => {
+  let captures = 0;
+  const h = createHarness({
+    tabs: [
+      { id: 1, active: true, splitViewId: 10, url: "https://left.test/" },
+      { id: 2, splitViewId: 10, url: "https://right.test/" },
+      { id: 3, url: "https://outside.test/" },
+    ],
+    async afterCapture(chrome) {
+      if (++captures === 2) await chrome.tabs.update(3, { active: true });
+    },
+  });
+  await assert.rejects(h.run("copy-screenshot"), {
+    code: "screenshot_changed",
+  });
+  assert.equal((await h.chrome.tabs.query({ active: true }))[0].id, 3);
+  assert.ok(!h.calls.some(([kind]) => kind === "message"));
+});
+
 test("screenshot labels omit embedded credentials and bound long URLs", async () => {
   const h = createHarness({
     tabs: [

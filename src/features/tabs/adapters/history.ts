@@ -25,6 +25,17 @@ export function createTabHistory(
   const { readTabSettings, saveTabSettings } = createTabSettings(
     chrome.storage,
   );
+  const transientActivations = new Map<number, number>();
+
+  async function activateWithoutHistory(tab: Tab) {
+    transientActivations.set(tab.windowId, tab.id);
+    try {
+      return await chrome.tabs.update(tab.id, { active: true });
+    } finally {
+      transientActivations.delete(tab.windowId);
+    }
+  }
+
   let historyQueue: Promise<unknown> = Promise.resolve();
   function enqueueHistory<T>(task: () => Promise<T>): Promise<T> {
     const result = historyQueue.then(task);
@@ -200,6 +211,7 @@ export function createTabHistory(
 
   function register() {
     scope.listen(chrome.tabs.onActivated, ({ tabId, windowId }) => {
+      if (transientActivations.get(windowId) === tabId) return;
       enqueueHistory(async () => {
         const window = await chrome.windows.get(windowId);
         // A background window can have an active tab without being the user's last tab.
@@ -306,6 +318,7 @@ export function createTabHistory(
     register,
     getHistoryQueue: () => historyQueue,
     enqueueHistory,
+    activateWithoutHistory,
     recordTab,
     finishTabWalk,
     readTabSettings,

@@ -40,6 +40,7 @@ export function createWorker(chrome: BrowserPort) {
   const { copyUrls, copyScreenshot } = createClipboard(
     chrome,
     readScreenshotUrlPreference,
+    tabs.activateWithoutHistory,
   );
   const { pauseAllTabs } = createMedia(chrome);
   let commandQueue: Promise<unknown> = Promise.resolve();

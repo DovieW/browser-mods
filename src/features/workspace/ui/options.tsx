@@ -346,17 +346,38 @@ export function Options({
                         : "Pause media on demand and show YouTube playlist duration in the toolbar popup."}
                   </p>
                   {s === "Clipboard" && (
-                    <label className="check">
-                      <input
-                        id="showScreenshotUrl"
-                        type="checkbox"
-                        checked={prefs.showScreenshotUrl}
-                        onChange={(e) => {
-                          void save("showScreenshotUrl", e.target.checked);
+                    <>
+                      <label className="check">
+                        <input
+                          id="showScreenshotUrl"
+                          type="checkbox"
+                          checked={prefs.showScreenshotUrl}
+                          onChange={(e) => {
+                            void save("showScreenshotUrl", e.target.checked);
+                          }}
+                        />
+                        Show page URL on screenshots
+                      </label>
+                      <button
+                        onClick={() => {
+                          void port
+                            .allowSplitScreenshots()
+                            .then((granted) => {
+                              if (granted)
+                                setNotice("Split screenshot access granted.");
+                              else
+                                fail(
+                                  Error(
+                                    "Split screenshot access was declined.",
+                                  ),
+                                );
+                            })
+                            .catch(fail);
                         }}
-                      />
-                      Show page URL on screenshots
-                    </label>
+                      >
+                        Allow split screenshots
+                      </button>
+                    </>
                   )}
                 </div>
               ))}
