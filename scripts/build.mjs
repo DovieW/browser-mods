@@ -5,7 +5,15 @@ import { commands } from "../src/core/actions/catalog.ts";
 await rm("dist", { recursive: true, force: true });
 await mkdir("dist");
 const manifest = JSON.parse(await readFile("manifest.json", "utf8"));
-manifest.commands = commands;
+// Chrome's shortcuts page displays descriptions but orders rows by command ID.
+manifest.commands = Object.fromEntries(
+  Object.entries(commands).map(
+    ([id, { shortcutGroup, description, ...binding }]) => [
+      id,
+      { ...binding, description: `${shortcutGroup} · ${description}` },
+    ],
+  ),
+);
 for (const file of [
   "popup.css",
   "offscreen.html",
