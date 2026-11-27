@@ -2,6 +2,7 @@ import { listenerScope } from "../../../platform/chrome/listeners";
 import {
   isExpectedDownload,
   isMicrosoftSignIn,
+  microsoftAccountOrigin,
   portalAddress,
   preferenceKey,
   runPrefix,
@@ -9,7 +10,12 @@ import {
   type Preferences,
   type Run,
 } from "../domain/portal";
-import { acceptPolicy, inspectPortal, isFreshPortalVisit } from "./page";
+import {
+  acceptPolicy,
+  inspectPortal,
+  isFreshPortalVisit,
+  selectMicrosoftAccount,
+} from "./page";
 import { loadRdpPreferences, readRdpRun } from "./storage";
 
 export function registerRdpHelper() {
@@ -116,11 +122,17 @@ export function registerRdpHelper() {
     const { enabled, portal, policyOrigin } = await prefs;
     if (!enabled) return;
     const address = portalAddress(url);
-    if (
+    const shouldAccept =
       policyOrigin &&
       address?.origin === policyOrigin &&
-      address.pathname === "/my.policy"
-    ) {
+      address.pathname === "/my.policy";
+    if (shouldAccept) {
+      if (portal?.origin === policyOrigin) {
+        await restored;
+        const run = await readRdpRun(id);
+        if (run?.phase !== "waiting" && (await currentUrl(id)) === url)
+          await write(id, { phase: "waiting", restarted: false });
+      }
       const current = await loadRdpPreferences();
       if (
         current.enabled &&
@@ -131,10 +143,29 @@ export function registerRdpHelper() {
         (await currentUrl(id)) === url
       )
         await result(id, acceptPolicy, [url]);
+      return;
     }
     if (!portal) return;
     await restored;
     if (address?.origin !== portal.origin) {
+      if (
+        portal.account &&
+        address?.origin === microsoftAccountOrigin &&
+        ownedTabs.has(id) &&
+        (await readRdpRun(id))?.phase === "waiting" &&
+        (await chrome.permissions.contains({
+          origins: [microsoftAccountOrigin + "/*"],
+        })) &&
+        (await currentUrl(id)) === url
+      ) {
+        const live = await loadRdpPreferences();
+        if (
+          live.enabled &&
+          live.portal?.origin === portal.origin &&
+          live.portal.account === portal.account
+        )
+          await result(id, selectMicrosoftAccount, [url, portal.account]);
+      }
       if (
         ownedTabs.has(id) &&
         (!address || !isMicrosoftSignIn(address)) &&

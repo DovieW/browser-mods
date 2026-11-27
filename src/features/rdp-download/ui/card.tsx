@@ -24,13 +24,18 @@ export function RdpCard({
   const [prefs, setPrefs] = useState<Preferences>();
   const [run, setRun] = useState<Run>();
   const [label, setLabel] = useState("");
+  const [account, setAccount] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   useEffect(() => {
     let active = true;
     void loadRdpPreferences()
       .then((value) => {
-        if (active) setPrefs(value);
+        if (active) {
+          setPrefs(value);
+          setLabel(value.portal?.desktop ?? "");
+          setAccount(value.portal?.account ?? "");
+        }
       })
       .catch(() => {
         if (active) setError("Could not read RDP settings.");
@@ -59,7 +64,7 @@ export function RdpCard({
     }
   }
 
-  const portal = makePortal(url, label);
+  const portal = makePortal(url, label, account);
   const canConfigure = makePortal(url, "placeholder") !== null;
   const address = portalAddress(url);
   const policyOrigin =
@@ -116,6 +121,17 @@ export function RdpCard({
               maxLength={160}
               onChange={(event) => {
                 setLabel(event.target.value);
+              }}
+            />
+          </label>
+          <label>
+            Microsoft work email (optional)
+            <input
+              type="email"
+              value={account}
+              maxLength={254}
+              onChange={(event) => {
+                setAccount(event.target.value);
               }}
             />
           </label>

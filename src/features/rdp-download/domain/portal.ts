@@ -1,7 +1,13 @@
 export const preferenceKey = "mods.rdp.preferences";
 export const runPrefix = "mods.rdp.run.";
 
-export type Portal = { origin: string; path: string; desktop: string };
+export type Portal = {
+  origin: string;
+  path: string;
+  desktop: string;
+  account?: string;
+};
+export const microsoftAccountOrigin = "https://login.microsoftonline.com";
 export type Run = {
   phase: "waiting" | "requested" | "downloaded" | "stopped";
   restarted: boolean;
@@ -22,7 +28,11 @@ export function portalAddress(url: string) {
     : null;
 }
 
-export function makePortal(url: string, label: string): Portal | null {
+export function makePortal(
+  url: string,
+  label: string,
+  account?: string,
+): Portal | null {
   const address = portalAddress(url);
   const desktop = label.trim().replace(/\s+/g, " ");
   if (
@@ -33,7 +43,18 @@ export function makePortal(url: string, label: string): Portal | null {
   ) {
     return null;
   }
-  return { origin: address.origin, path: address.pathname, desktop };
+  const email = account?.trim().toLowerCase();
+  if (
+    email &&
+    (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
+  )
+    return null;
+  return {
+    origin: address.origin,
+    path: address.pathname,
+    desktop,
+    ...(email ? { account: email } : {}),
+  };
 }
 
 export function readPreferences(value: unknown): Preferences {
@@ -57,7 +78,11 @@ export function readPreferences(value: unknown): Preferences {
   ) {
     return preferences;
   }
-  const parsed = makePortal(portal.origin + portal.path, portal.desktop);
+  const parsed = makePortal(
+    portal.origin + portal.path,
+    portal.desktop,
+    typeof portal.account === "string" ? portal.account : undefined,
+  );
   return parsed?.origin === portal.origin && parsed.path === portal.path
     ? { ...preferences, portal: parsed }
     : preferences;

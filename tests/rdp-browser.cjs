@@ -5,7 +5,7 @@ const path = require("node:path");
 const { chromium } = require("playwright");
 
 const portal = "https://remote.test";
-const microsoft = "https://login.microsoft.com";
+const microsoft = "https://login.microsoftonline.com";
 const preferenceKey = "mods.rdp.preferences";
 const webtop = "/vdesk/webtop.eui";
 const launch = "/f5vdi/rdp/launch/Common/test-desktop";
@@ -17,7 +17,7 @@ const launch = "/f5vdi/rdp/launch/Common/test-desktop";
   await fs.cp(path.resolve("dist"), extension, { recursive: true });
   const manifestFile = path.join(extension, "manifest.json");
   const manifest = JSON.parse(await fs.readFile(manifestFile, "utf8"));
-  manifest.host_permissions = [portal + "/*"];
+  manifest.host_permissions = [portal + "/*", microsoft + "/*"];
   manifest.permissions.push("downloads");
   manifest.optional_permissions = manifest.optional_permissions.filter(
     (permission) => permission !== "downloads",
@@ -75,7 +75,12 @@ const launch = "/f5vdi/rdp/launch/Common/test-desktop";
             ? '<a href="/desktop.rdp">Work Desktop</a><a href="/desktop.rdp">Work Desktop</a>'
             : `<main id="desktop"></main><script>
                 setTimeout(() => {
-                  document.getElementById("desktop").innerHTML = '<a href="/desktop.rdp">Work Desktop</a>';
+                  const favorite = document.createElement("span");
+                  favorite.id = "/Common/test-desktop";
+                  favorite.className = "favorite";
+                  favorite.innerHTML = '<span class="caption"><span>Work Desktop</span></span>';
+                  favorite.addEventListener("click", () => { location.href = "/desktop.rdp"; });
+                  document.getElementById("desktop").append(favorite);
                 }, 180);
               </script>`,
       };
@@ -87,7 +92,10 @@ const launch = "/f5vdi/rdp/launch/Common/test-desktop";
     await context.route(microsoft + "/fixture", (route) =>
       route.fulfill({
         contentType: "text/html",
-        body: `<a href="${portal}${webtop}">Finish manual sign-in</a>`,
+        body: `<h1>Pick an account</h1>
+          <button onclick="document.body.textContent = 'Wrong account'">personal@example.test</button>
+          <div role="button" onclick="document.getElementById('next').hidden = false"><span>work@example.test</span></div>
+          <a id="next" hidden href="${portal}${webtop}">Finish manual sign-in</a>`,
       }),
     );
 
@@ -105,7 +113,12 @@ const launch = "/f5vdi/rdp/launch/Common/test-desktop";
         chrome.storage.local.set({
           [key]: {
             enabled: false,
-            portal: { origin, path: pathname, desktop: "Work Desktop" },
+            portal: {
+              origin,
+              path: pathname,
+              desktop: "Work Desktop",
+              account: "work@example.test",
+            },
           },
         }),
       { key: preferenceKey, origin: portal, pathname: webtop },
@@ -113,7 +126,7 @@ const launch = "/f5vdi/rdp/launch/Common/test-desktop";
 
     const page = await context.newPage();
     await page.goto(portal + webtop);
-    await page.getByRole("link", { name: "Work Desktop" }).waitFor();
+    await page.getByText("Work Desktop", { exact: true }).waitFor();
     assert.equal(requests, 0);
     await popup.bringToFront();
     await toggle.click();
@@ -144,7 +157,7 @@ const launch = "/f5vdi/rdp/launch/Common/test-desktop";
       );
     });
     await recovery.reload();
-    await recovery.getByRole("link", { name: "Work Desktop" }).waitFor();
+    await recovery.getByText("Work Desktop", { exact: true }).waitFor();
     assert.equal(requests, 1);
     await recovery.close();
 
@@ -199,6 +212,12 @@ const launch = "/f5vdi/rdp/launch/Common/test-desktop";
       if (!String(error).includes("interrupted")) throw error;
     });
     await policy.waitForURL(microsoft + "/fixture");
+    assert.equal(
+      await policy
+        .getByRole("link", { name: "Finish manual sign-in" })
+        .isVisible(),
+      false,
+    );
     assert.equal(requests, 2);
     console.log(
       "PASS RDP default, opt-out, sign-out and launch error recovery, bounded restart, manual MFA, and download deduplication",

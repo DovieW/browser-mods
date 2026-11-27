@@ -1,5 +1,6 @@
 import {
   preferenceKey,
+  microsoftAccountOrigin,
   readPreferences,
   runPrefix,
   type Portal,
@@ -14,7 +15,10 @@ export async function loadRdpPreferences() {
 export async function configurePortal(portal: Portal) {
   if (
     !(await chrome.permissions.request({
-      origins: [portal.origin + "/*"],
+      origins: [
+        portal.origin + "/*",
+        ...(portal.account ? [microsoftAccountOrigin + "/*"] : []),
+      ],
       permissions: ["downloads"],
     }))
   )

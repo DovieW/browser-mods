@@ -1,5 +1,68 @@
 import type { Portal } from "../domain/portal";
 
+// Chrome serializes this function into an isolated world.
+export function selectMicrosoftAccount(expectedUrl: string, email: string) {
+  if (location.href !== expectedUrl) return;
+  const pick = () => {
+    const visible = (element: HTMLElement) =>
+      element.getClientRects().length > 0 &&
+      getComputedStyle(element).visibility === "visible";
+    if (
+      ![
+        ...document.querySelectorAll<HTMLElement>(
+          "h1, h2, [role=heading], #loginHeader",
+        ),
+      ].some(
+        (node) => visible(node) && node.innerText.trim() === "Pick an account",
+      )
+    )
+      return;
+    const buttons = [
+      ...document.querySelectorAll<HTMLElement>(
+        'button, [role="button"], a[href]',
+      ),
+    ].filter(
+      (button) =>
+        visible(button) &&
+        !button.matches('[disabled], [aria-disabled="true"]') &&
+        ([button, ...button.querySelectorAll<HTMLElement>("span, div")].some(
+          (element) => element.innerText.trim().toLowerCase() === email,
+        ) ||
+          button.getAttribute("aria-label")?.trim().toLowerCase() === email),
+    );
+    if (
+      buttons.length !== 1 ||
+      !buttons[0] ||
+      buttons[0].dataset.browserModsSelected !== undefined
+    )
+      return;
+    buttons[0].dataset.browserModsSelected = "";
+    buttons[0].click();
+    return true;
+  };
+  if (pick()) return;
+  return new Promise<void>((resolve) => {
+    const observer = new MutationObserver(() => {
+      if (pick()) finish();
+    });
+    const timer = setTimeout(finish, 5000);
+    function finish() {
+      clearTimeout(timer);
+      observer.disconnect();
+      window.removeEventListener("pagehide", finish);
+      resolve();
+    }
+    window.addEventListener("pagehide", finish, { once: true });
+    observer.observe(document.body, {
+      subtree: true,
+      childList: true,
+      characterData: true,
+      attributes: true,
+      attributeFilter: ["hidden", "class", "style", "aria-label"],
+    });
+  });
+}
+
 export function acceptPolicy(expectedUrl: string) {
   if (location.href !== expectedUrl || location.pathname !== "/my.policy")
     return;
@@ -82,7 +145,7 @@ export async function inspectPortal(
   }
 
   if (location.pathname !== portal.path) return "unknown" as const;
-  const selector = "a, button, [role=button]";
+  const selector = "a, button, [role=button], span.favorite[id]";
   const controls = new Set(document.querySelectorAll<HTMLElement>(selector));
   const matches = () =>
     Array.from(controls).filter((element) => {
@@ -92,6 +155,13 @@ export async function inspectPortal(
       }
 
       if (!visible(element)) return false;
+      if (element.matches("span.favorite[id]"))
+        return (
+          element
+            .querySelector(".caption")
+            ?.textContent.trim()
+            .replace(/\s+/g, " ") === portal.desktop
+        );
       if (
         element instanceof HTMLAnchorElement &&
         element.hasAttribute("href")
@@ -134,6 +204,11 @@ export async function inspectPortal(
           record.target.matches(selector)
         )
           controls.add(record.target);
+        if (record.target instanceof Element) {
+          const favorite =
+            record.target.closest<HTMLElement>("span.favorite[id]");
+          if (favorite) controls.add(favorite);
+        }
       }
       if (matches().length === 1) finish("ready");
     });
