@@ -5,6 +5,7 @@ import {
   runPrefix,
   type Portal,
 } from "../domain/portal";
+import { nativeHost, requestDesktopAccess } from "./native";
 
 export async function loadRdpPreferences() {
   return readPreferences(
@@ -64,14 +65,9 @@ export async function readRdpRun(tabId: number) {
     import("../domain/portal").Run | undefined;
 }
 
-export const nativeHost = "com.doview.browser_mods";
-
 export async function setNativeAutofill(enabled: boolean) {
   if (enabled) {
-    if (
-      !(await chrome.permissions.request({ permissions: ["nativeMessaging"] }))
-    )
-      throw Error("Desktop helper access was declined.");
+    await requestDesktopAccess();
     const response: unknown = await chrome.runtime
       .sendNativeMessage(nativeHost, { action: "status" })
       .catch(() => null);

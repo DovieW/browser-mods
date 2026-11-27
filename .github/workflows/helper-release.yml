@@ -56,6 +56,6 @@ jobs:
         working-directory: release
         run: |
           sha256sum browser-mods-* > SHA256SUMS.txt
-          gh release create "$GITHUB_REF_NAME" browser-mods-* SHA256SUMS.txt --repo "$GITHUB_REPOSITORY" --latest=false --title "Browser Mods desktop helper ${GITHUB_REF_NAME#helper-}" --notes "Native Bitwarden shortcut helper for Google Chrome on Kubuntu and Windows (x64). Extract your platform archive, then run the helper with install and your Browser Mods extension ID."
+          gh release create "$GITHUB_REF_NAME" browser-mods-* SHA256SUMS.txt --repo "$GITHUB_REPOSITORY" --latest=false --title "Browser Mods desktop helper ${GITHUB_REF_NAME#helper-}" --notes "Native Remote Desktop session checks and Bitwarden autofill for Google Chrome on Kubuntu and Windows (x64). Extract your platform archive, then run the helper with install and your Browser Mods extension ID."
         env:
           GH_TOKEN: ${{ github.token }}

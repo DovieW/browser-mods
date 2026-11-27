@@ -42,6 +42,12 @@ One before/after pair on the Kubuntu IdeaPad used Chromium 153.0.8010.12, Node 2
 
 The packaged manifest comparison verifies the same permission set, content-script registration, and background entrypoint. WXT and DevTools run outside the extension, Redact stays in the UI, and the existing runtime listeners retain their lifecycle. The migration adds no polling, keepalive, or persistent page code. The benchmark does not measure idle CPU or memory.
 
+## Remote Desktop session check
+
+The enabled RDP helper checks the configured, focused portal when its desktop control is ready. The desktop query uses the existing Native Messaging grant and runs once per eligible browser event. It adds no native process, polling, or listener on unrelated tabs or while idle. It returns only a boolean.
+
+On the Kubuntu IdeaPad with Remmina connected via RD Gateway, 20 framed requests through freshly launched helper processes measured p50/p95 of 2.2/2.5 ms for version 0.1.0, which rejected the new request, and 18.6/21.2 ms for version 0.2.0, which detected the connection. This measures the native round trip outside Chrome. The browser fixture covers repeated activation, suppression, and download after disconnect. Windows compilation and release checks are separate from live desktop measurements.
+
 ## Automated protections and limits
 
 - Lifecycle tests verify zero recurring tab queries/writes/injections during idle quiescence and removal of runtime listeners on disposal.

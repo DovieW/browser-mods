@@ -442,8 +442,82 @@ const launch = "/f5vdi/rdp/launch/Common/test-desktop";
       false,
     );
     assert.equal(requests, 3);
+
+    await worker.evaluate(
+      async ({ key, origin, pathname }) => {
+        globalThis.rdpStatusFixture = { active: true, checks: 0 };
+        chrome.runtime.sendNativeMessage = async (host, message) => {
+          if (
+            host !== "com.doview.browser_mods" ||
+            message.action !== "rdp-session-status" ||
+            Object.keys(message).length !== 1
+          )
+            throw Error("Unexpected native request in session status fixture");
+          const status = globalThis.rdpStatusFixture;
+          status.checks++;
+          return { ok: true, active: status.active };
+        };
+        await chrome.storage.local.set({
+          [key]: {
+            enabled: true,
+            portal: { origin, path: pathname, desktop: "Work Desktop" },
+          },
+        });
+      },
+      { key: preferenceKey, origin: portal, pathname: webtop },
+    );
+    const alreadyConnected = await context.newPage();
+    await alreadyConnected.bringToFront();
+    await alreadyConnected.goto(portal + webtop);
+    const connectedTab = () =>
+      worker.evaluate(async () => {
+        const entries = Object.entries(await chrome.storage.session.get(null));
+        const entry = entries.find(
+          ([key, run]) =>
+            key.startsWith("mods.rdp.run.") && run?.phase === "connected",
+        );
+        return entry
+          ? Number(entry[0].slice("mods.rdp.run.".length))
+          : undefined;
+      });
+    async function until(read) {
+      for (let attempt = 0; attempt < 100; attempt++) {
+        const observed = await read();
+        if (observed) return observed;
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      }
+      throw Error("Session check did not run on the active portal tab");
+    }
+    const portalId = await until(connectedTab);
+    assert.equal(requests, 3);
+    const parkedId = await worker.evaluate(async (portalId) => {
+      const { windowId } = await chrome.tabs.get(portalId);
+      const parked = await chrome.tabs.create({ windowId, active: true });
+      return parked.id;
+    }, portalId);
+    const activate = (id) =>
+      worker.evaluate((id) => chrome.tabs.update(id, { active: true }), id);
+    const before = await worker.evaluate(
+      () => globalThis.rdpStatusFixture.checks,
+    );
+    await activate(portalId);
+    const checks = () =>
+      worker.evaluate(() => globalThis.rdpStatusFixture.checks);
+    await until(async () => (await checks()) > before);
+    assert.equal(requests, 3);
+
+    await activate(parkedId);
+    await worker.evaluate(() => {
+      globalThis.rdpStatusFixture.active = false;
+    });
+    const afterDisconnect = alreadyConnected.waitForEvent("download", {
+      timeout: 8_000,
+    });
+    await activate(portalId);
+    assert.equal(await (await afterDisconnect).failure(), null);
+    assert.equal(requests, 4);
     console.log(
-      "PASS RDP default, opt-out, sign-out and launch error recovery, foreground restart, cached sign-in, manual MFA, and download deduplication",
+      "PASS RDP defaults, sign-in, foreground recovery, download deduplication, and active-session checks across tab activations",
     );
   } finally {
     await context.close();

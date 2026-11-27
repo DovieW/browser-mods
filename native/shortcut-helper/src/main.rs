@@ -7,6 +7,7 @@ use std::{
 };
 
 mod backend;
+mod rdp;
 
 const HOST: &str = "com.doview.browser_mods";
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -37,7 +38,11 @@ fn respond(mut output: impl Write, message: &Value) -> io::Result<()> {
     output.flush()
 }
 
-fn handle(input: impl Read, send: fn() -> Result<(), &'static str>) -> Value {
+fn handle(
+    input: impl Read,
+    send: fn() -> Result<(), &'static str>,
+    rdp_active: fn() -> io::Result<bool>,
+) -> Value {
     match read_request(input) {
         Ok(value) if value == json!({"action":"status"}) => {
             json!({"ok":true,"version":VERSION,"ready":backend::ready()})
@@ -45,6 +50,10 @@ fn handle(input: impl Read, send: fn() -> Result<(), &'static str>) -> Value {
         Ok(value) if value == json!({"action":"bitwarden-autofill"}) => match send() {
             Ok(()) => json!({"ok":true}),
             Err(code) => json!({"ok":false,"code":code}),
+        },
+        Ok(value) if value == json!({"action":"rdp-session-status"}) => match rdp_active() {
+            Ok(active) => json!({"ok":true,"active":active}),
+            Err(_) => json!({"ok":false,"code":"rdp_status_unavailable"}),
         },
         _ => json!({"ok":false,"code":"invalid_request"}),
     }
@@ -70,7 +79,7 @@ fn install(id: &str) -> Result<PathBuf, Box<dyn std::error::Error>> {
         &staged,
         serde_json::to_vec_pretty(&json!({
             "name":HOST,
-            "description":"Browser Mods Bitwarden shortcut helper",
+            "description":"Browser Mods desktop helper",
             "path":binary,
             "type":"stdio",
             "allowed_origins":[format!("chrome-extension://{id}/")]
@@ -122,7 +131,7 @@ fn main() -> ExitCode {
             ExitCode::SUCCESS
         }
         [caller, ..] if configured_caller(caller) => {
-            let message = handle(io::stdin().lock(), backend::send);
+            let message = handle(io::stdin().lock(), backend::send, rdp::active);
             if respond(io::stdout().lock(), &message).is_ok() {
                 ExitCode::SUCCESS
             } else {
@@ -152,7 +161,10 @@ mod tests {
         }
         let mut frame = Vec::new();
         respond(&mut frame, &json!({"action":"bitwarden-autofill"})).unwrap();
-        assert_eq!(handle(frame.as_slice(), sent), json!({"ok":true}));
+        assert_eq!(
+            handle(frame.as_slice(), sent, || Ok(false)),
+            json!({"ok":true})
+        );
         frame.clear();
         respond(
             &mut frame,
@@ -160,12 +172,25 @@ mod tests {
         )
         .unwrap();
         assert_eq!(
-            handle(frame.as_slice(), unexpected)["code"],
+            handle(frame.as_slice(), unexpected, || Ok(false))["code"],
             "invalid_request"
         );
         assert_eq!(
-            handle([255u8; 4].as_slice(), unexpected)["code"],
+            handle([255u8; 4].as_slice(), unexpected, || Ok(false))["code"],
             "invalid_request"
         );
+        frame.clear();
+        respond(&mut frame, &json!({"action":"rdp-session-status"})).unwrap();
+        for active in [false, true] {
+            let detect = if active {
+                (|| Ok(true)) as fn() -> _
+            } else {
+                || Ok(false)
+            };
+            assert_eq!(
+                handle(frame.as_slice(), unexpected, detect),
+                json!({"ok": true, "active": active})
+            );
+        }
     }
 }

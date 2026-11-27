@@ -9,7 +9,7 @@ export type Portal = {
 };
 export const microsoftAccountOrigin = "https://login.microsoftonline.com";
 export type Run = {
-  phase: "waiting" | "requested" | "downloaded" | "stopped";
+  phase: "waiting" | "requested" | "downloaded" | "connected" | "stopped";
   desktopDocumentId?: string;
   started?: number;
   f5Submitted?: boolean;

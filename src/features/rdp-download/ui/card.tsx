@@ -8,6 +8,7 @@ import {
   setNativeAutofill,
   setPolicyAcceptance,
 } from "../adapters/storage";
+import { hasDesktopAccess, requestDesktopAccess } from "../adapters/native";
 import {
   isMicrosoftSignIn,
   makePortal,
@@ -40,8 +41,14 @@ export function RdpCard({
   const [account, setAccount] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [desktopAccess, setDesktopAccess] = useState<boolean>();
   useEffect(() => {
     let active = true;
+    void hasDesktopAccess()
+      .then((allowed) => {
+        if (active) setDesktopAccess(allowed);
+      })
+      .catch(() => {});
     void loadRdpPreferences()
       .then((value) => {
         if (active) {
@@ -70,6 +77,7 @@ export function RdpCard({
     try {
       await action();
       setPrefs(await loadRdpPreferences());
+      setDesktopAccess(await hasDesktopAccess());
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not update the helper.");
     } finally {
@@ -149,6 +157,11 @@ export function RdpCard({
           Use the desktop helper for Bitwarden autofill
         </label>
       )}
+      {prefs?.enabled && prefs.portal && desktopAccess === false && (
+        <button disabled={busy} onClick={() => void save(requestDesktopAccess)}>
+          Allow desktop session checks
+        </button>
+      )}
       {prefs?.enabled && canConfigure && (
         <form
           onSubmit={(event) => {
@@ -184,6 +197,9 @@ export function RdpCard({
       )}
       {prefs?.enabled && run?.phase === "downloaded" && (
         <p role="status">RDP file downloaded.</p>
+      )}
+      {prefs?.enabled && run?.phase === "connected" && (
+        <p role="status">Remote Desktop is already connected.</p>
       )}
       {prefs?.enabled && run?.phase === "requested" && (
         <p role="status">

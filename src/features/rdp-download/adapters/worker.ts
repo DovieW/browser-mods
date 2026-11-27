@@ -18,7 +18,8 @@ import {
   selectMicrosoftAccount,
   submitFilledF5,
 } from "./page";
-import { loadRdpPreferences, nativeHost, readRdpRun } from "./storage";
+import { loadRdpPreferences, readRdpRun } from "./storage";
+import { nativeHost, remoteDesktopIsActive } from "./native";
 import { microsoftForm, type MicrosoftStage } from "./microsoft";
 
 export function registerRdpHelper() {
@@ -363,20 +364,6 @@ export function registerRdpHelper() {
       await recoverLaunchError(portal, id, url);
       return;
     }
-    if (
-      previous &&
-      (previous.phase === "requested" ||
-        previous.phase === "downloaded" ||
-        previous.desktopDocumentId)
-    ) {
-      const expired =
-        previous.phase === "requested" &&
-        Date.now() - (previous.started ?? 0) > 60_000;
-      if (previous.phase === "requested" && !expired) return;
-      const visit = await result(id, isFreshPortalVisit, []);
-      if (!visit?.result || visit.documentId === previous.desktopDocumentId)
-        return;
-    }
     const waiting: Run =
       previous?.phase === "waiting" ? previous : { phase: "waiting" };
     if (address.pathname === "/" || address.pathname === "/my.policy") {
@@ -402,6 +389,38 @@ export function registerRdpHelper() {
       .catch(() => {})
       .then(async () => {
         if (!(await stillEnabled(portal, id, url))) return;
+        const connected = await remoteDesktopIsActive();
+        if (!(await stillEnabled(portal, id, url))) return;
+        const latest = await readRdpRun(id);
+        if (
+          latest?.phase === "requested" &&
+          Date.now() - (latest.started ?? 0) <= 60_000
+        )
+          return;
+        if (connected === true) {
+          if (
+            latest?.phase !== "connected" ||
+            latest.desktopDocumentId !== page.documentId
+          )
+            await write(id, {
+              phase: "connected",
+              ...(page.documentId
+                ? { desktopDocumentId: page.documentId }
+                : {}),
+            });
+          return;
+        }
+        if (
+          latest &&
+          !(latest.phase === "connected" && connected === false) &&
+          (latest.phase === "requested" ||
+            latest.phase === "downloaded" ||
+            latest.desktopDocumentId)
+        ) {
+          const visit = await result(id, isFreshPortalVisit, []);
+          if (!visit?.result || visit.documentId === latest.desktopDocumentId)
+            return;
+        }
         const started = Date.now();
         const state = await chrome.storage.session.get(null);
         const pending = storedRuns(state).some(([, value]) => {

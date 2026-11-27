@@ -175,7 +175,7 @@ Icons are resized from the generated image at `assets/icon.png`; `npm run icons`
 
 ## Desktop helper
 
-The optional [desktop helper](native/shortcut-helper/README.md) invokes the Bitwarden shortcut during the RDP sign-in flow. It has separate releases for Windows and Kubuntu.
+The optional [desktop helper](native/shortcut-helper/README.md) checks for an existing Remote Desktop connection before downloading and can invoke the Bitwarden shortcut during RDP sign-in. It has separate releases for Windows and Kubuntu.
 
 ## Release packaging
 
