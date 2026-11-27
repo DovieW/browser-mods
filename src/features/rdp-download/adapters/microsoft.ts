@@ -22,48 +22,46 @@ export function microsoftForm(
     );
   };
   const find = () => {
-    const heading = [
+    const headings = [
       ...document.querySelectorAll<HTMLElement>(
         "h1, h2, [role=heading], #loginHeader",
       ),
     ]
-      .find(visible)
-      ?.innerText.trim();
-    const stage: MicrosoftStage | null =
-      heading === "Sign in"
-        ? "username"
-        : heading === "Enter password"
-          ? "password"
-          : null;
-    if (!stage || !stages.includes(stage)) return null;
-    const field = document.querySelector<HTMLInputElement>(
-      stage === "username"
-        ? 'input#i0116[name="loginfmt"]'
-        : 'input#i0118[type="password"][name="passwd"]',
-    );
-    const button = document.querySelector<HTMLInputElement | HTMLButtonElement>(
-      "input#idSIButton9[type=submit], button#idSIButton9[type=submit]",
-    );
-    if (
-      !field ||
-      !button ||
-      !visible(field) ||
-      !visible(button) ||
-      field.disabled ||
-      button.disabled
-    )
-      return null;
-    const label =
-      button instanceof HTMLInputElement ? button.value : button.innerText;
-    if (label.trim() !== (stage === "username" ? "Next" : "Sign in"))
-      return null;
-    if (
-      stage === "username" &&
-      field.value &&
-      field.value.trim().toLowerCase() !== email
-    )
-      return null;
-    return { field, button, stage };
+      .filter(visible)
+      .map((element) => element.innerText.trim());
+    const matches = stages.flatMap((stage) => {
+      const username = stage === "username";
+      if (!headings.includes(username ? "Sign in" : "Enter password"))
+        return [];
+      const fields = [
+        ...document.querySelectorAll<HTMLInputElement>(
+          username
+            ? 'input#i0116[name="loginfmt"]'
+            : 'input#i0118[type="password"][name="passwd"]',
+        ),
+      ].filter((field) => !field.disabled && visible(field));
+      const buttons = [
+        ...document.querySelectorAll<HTMLInputElement | HTMLButtonElement>(
+          "input#idSIButton9[type=submit], button#idSIButton9[type=submit]",
+        ),
+      ].filter((button) => {
+        const label =
+          button instanceof HTMLInputElement ? button.value : button.innerText;
+        return (
+          !button.disabled &&
+          visible(button) &&
+          label.trim() === (username ? "Next" : "Sign in")
+        );
+      });
+      const [field] = fields;
+      const [button] = buttons;
+      if (fields.length !== 1 || buttons.length !== 1 || !field || !button)
+        return [];
+      if (username && field.value && field.value.trim().toLowerCase() !== email)
+        return [];
+      return [{ field, button, stage }];
+    });
+    return matches.length === 1 ? (matches[0] ?? null) : null;
   };
   const inspect = () => {
     const form = find();

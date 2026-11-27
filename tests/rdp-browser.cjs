@@ -130,9 +130,9 @@ const launch = "/f5vdi/rdp/launch/Common/test-desktop";
           const main = document.querySelector("main");
           function stage(password) {
             document.getElementById("loginHeader").textContent = password ? "Enter password" : "Sign in";
-            main.innerHTML = password ? '<input id="i0118" type="password" name="passwd"><input id="idSIButton9" type="submit" value="Sign in">' :
+            main.innerHTML = password ? '<div hidden><input id="i0118" type="password" name="passwd"><input id="idSIButton9" type="submit" value="Next"></div><input id="i0118" type="password" name="passwd"><input id="idSIButton9" type="submit" value="Sign in">' :
               '<input id="i0116" type="email" name="loginfmt"><input id="idSIButton9" type="submit" value="Next">';
-            document.getElementById("idSIButton9").onclick = () => {
+            main.querySelector(":scope > #idSIButton9").onclick = () => {
               if (!password) { stage(true); return; }
               document.getElementById("loginHeader").textContent = "Verify your identity";
               main.innerHTML = '<input name="otp"><button>Verify</button>';
