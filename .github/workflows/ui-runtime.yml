@@ -1,10 +1,5 @@
 name: UI runtime experiment
-on:
-  workflow_dispatch:
-  push:
-    paths: ["experiments/ui-runtime/**", ".github/workflows/ui-runtime.yml"]
-  pull_request:
-    paths: ["experiments/ui-runtime/**", ".github/workflows/ui-runtime.yml"]
+on: workflow_dispatch
 jobs:
   compare:
     runs-on: ubuntu-latest
