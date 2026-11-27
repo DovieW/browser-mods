@@ -305,6 +305,11 @@ export function Options({
                 Assigned keys are managed by Chrome. Desired keys and assignment
                 history follow your setup across devices.
               </p>
+              <p>
+                Chrome sorts this extension’s shortcuts by command ID. Category
+                prefixes keep related shortcuts together. If an update changes a
+                command’s ID, assign its key again in Chrome.
+              </p>
               <button
                 onClick={() => {
                   void port.editKeys().catch(fail);

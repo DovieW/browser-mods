@@ -1,4 +1,5 @@
 import type { ShortcutPort } from "../../core/shortcuts/application";
+import { readBrowserCommands } from "../chrome/commands";
 export function shortcutHistoryPort(api: typeof chrome): ShortcutPort {
   return {
     readLocal: () =>
@@ -8,7 +9,7 @@ export function shortcutHistoryPort(api: typeof chrome): ShortcutPort {
     publish: (values) => api.storage.sync.set(values),
     assignments: async () =>
       Object.fromEntries(
-        (await api.commands.getAll())
+        (await readBrowserCommands(api.commands))
           .filter((c) => c.name && !c.name.startsWith("_"))
           .map((c) => [c.name ?? "", c.shortcut ?? ""]),
       ),

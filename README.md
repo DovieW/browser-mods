@@ -20,6 +20,8 @@ This README describes the current source; see [the changelog](CHANGELOG.md) for 
 
 For a local unpacked build, run `npm run build -- --shortcut-labels /path/to/shortcuts-backup.json` to append your saved keys to their descriptions in Chrome’s shortcut settings. Commands with an empty or missing saved key show only the category and description. Chrome still controls the actual assignments.
 
+Chrome sorts shortcut rows by command ID, so Browser Mods prefixes its IDs with their categories. If you upgraded from a build with ungrouped IDs, you may need to reassign your keys once. Saved shortcut history and backups still use the same action IDs.
+
 Four shortcuts are suggested by the extension on installation. Chrome can assign them differently or leave them unset if they conflict with existing shortcuts. Everything else below is a recommendation you must assign yourself. Chrome allows at most four suggested shortcuts in an extension manifest.
 
 | Command                                            | Suggested on installation | Recommended manual binding |

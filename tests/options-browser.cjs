@@ -42,6 +42,19 @@ const assert = require("node:assert/strict");
     console.log(
       "PASS options reconciliation, worker messaging and action rows",
     );
+
+    await page.goto("chrome://extensions/shortcuts");
+    const entries = page.locator(".command-entry").filter({
+      has: page.locator(`select[data-extension-id="${id}"]`),
+    });
+    await entries.first().waitFor();
+    const labels = (await entries.locator(".command-name").allTextContents())
+      .map((label) => label.trim())
+      .filter((label) => /^[A-Z]+ - /.test(label));
+    assert.equal(labels.length, 24);
+    const categories = labels.map((label) => label.split(" - ")[0]);
+    assert.deepEqual(categories, categories.toSorted());
+    console.log("PASS Chrome shortcut settings groups command rows");
   } finally {
     await context.close();
     await fs.rm(profile, { recursive: true, force: true });

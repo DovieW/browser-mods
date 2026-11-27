@@ -1,8 +1,9 @@
 import { listenerScope } from "../../../platform/chrome/listeners";
+import { readBrowserCommands } from "../../../platform/chrome/commands";
 export function popupBrowser() {
   const scope = listenerScope();
   return {
-    commands: () => chrome.commands.getAll(),
+    commands: () => readBrowserCommands(chrome.commands),
     send: async (message: Record<string, unknown>): Promise<unknown> =>
       chrome.runtime.sendMessage({ target: "background", ...message }),
     editKeys: () =>

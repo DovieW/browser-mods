@@ -2,7 +2,7 @@ import { checkBundles } from "./checks/bundles.mjs";
 import { build } from "esbuild";
 import { cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { parseArgs } from "node:util";
-import { commands } from "../src/core/actions/catalog.ts";
+import { browserCommandId, commands } from "../src/core/actions/catalog.ts";
 import { validateShortcutSnapshot } from "../src/features/shortcut-setup/adapters/snapshots.ts";
 
 const { values } = parseArgs({
@@ -21,7 +21,7 @@ const manifest = JSON.parse(await readFile("manifest.json", "utf8"));
 manifest.commands = Object.fromEntries(
   Object.entries(commands).map(
     ([id, { shortcutGroup, description, ...binding }]) => [
-      id,
+      browserCommandId(id, shortcutGroup),
       {
         ...binding,
         description: [shortcutGroup, description, preferred[id]]

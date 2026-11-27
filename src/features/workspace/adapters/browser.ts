@@ -2,6 +2,7 @@ import { succeeded } from "../../../contracts/action-messages";
 import { commandErrorMessage } from "../../../core/actions/errors";
 import { MEDIA_ORIGINS } from "../../../contracts/media";
 import { readShortcutSetup } from "../../../platform/messaging/shortcuts";
+import { readBrowserCommands } from "../../../platform/chrome/commands";
 import {
   readPreferences,
   savePreference,
@@ -17,7 +18,7 @@ export function workspaceBrowser() {
     restorePreferences,
     watchPreferences,
     readShortcutSetup,
-    commands: () => chrome.commands.getAll(),
+    commands: () => readBrowserCommands(chrome.commands),
     async run(command: string) {
       if (
         command === "pause-all-tabs" &&

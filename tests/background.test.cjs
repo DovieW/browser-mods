@@ -880,10 +880,11 @@ test("keyboard failures store only a safe reason and do not block the queue", as
   const h = createHarness({
     captureError: "Capture failed: https://private.test/ Secret title",
   });
-  h.chrome.commands.onCommand.fire("copy-screenshot");
+  h.chrome.commands.onCommand.fire("clipboard-copy-screenshot");
   await h.evaluate("commandQueue");
   await new Promise((resolve) => setImmediate(resolve));
   assert.equal(h.session.lastError.code, "screenshot_failed");
+  assert.equal(h.session.lastError.command, "copy-screenshot");
   assert.equal(JSON.stringify(h.session.lastError).includes("private"), false);
   await h.run("copy-url");
   assert.equal(h.session.lastError, undefined);

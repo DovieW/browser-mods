@@ -186,7 +186,7 @@ const { execFileSync } = require("node:child_process");
         for (let i = 0; i < 200; i++) {
           if (
             (await chrome.storage.session.get("testLastCommand"))
-              .testLastCommand === "copy-screenshot"
+              .testLastCommand === "clipboard-copy-screenshot"
           )
             return;
           await new Promise((resolve) => setTimeout(resolve, 25));

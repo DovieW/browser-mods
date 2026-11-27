@@ -16,7 +16,7 @@ import { commandError, commandErrorCode } from "../core/actions/errors";
 import { createTabs } from "../features/tabs/public";
 import { createClipboard } from "../features/clipboard/public";
 import { createMedia } from "../features/media/public";
-import type { CommandId } from "../core/actions/catalog";
+import { internalCommandId, type CommandId } from "../core/actions/catalog";
 export function createWorker(chrome: BrowserPort) {
   const scope = listenerScope();
   const NONE = -1;
@@ -143,7 +143,8 @@ export function createWorker(chrome: BrowserPort) {
     scope.listen(chrome.tabs.onRemoved, (id) => {
       void chrome.storage.session.remove(`mods.launcher.${id}`).catch(() => {});
     });
-    scope.listen(chrome.commands.onCommand, (command, tab) => {
+    scope.listen(chrome.commands.onCommand, (browserId, tab) => {
+      const command = internalCommandId(browserId);
       // Request in the user gesture, before awaiting context or the command queue.
       const permission =
         command === "pause-all-tabs"

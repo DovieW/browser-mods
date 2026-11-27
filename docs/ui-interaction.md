@@ -4,7 +4,9 @@ Status: initial production shell implemented, 2026-11-17. One extension, Redact 
 
 ## Everyday interaction
 
-Direct Chrome commands execute existing actions without rendering UI. The unassigned `open-palette` command opens search independently of the toolbar home. Existing command IDs and four suggested defaults are preserved. Configure its key through Chrome’s shortcut editor.
+Direct Chrome commands execute existing actions without rendering UI. The unassigned `open-palette` action opens search independently of the toolbar home. Configure its key through Chrome’s shortcut editor. The four suggested defaults still apply.
+
+Chrome displays command descriptions in its shortcut editor but sorts and stores bindings by manifest command ID. The build prefixes native IDs with the catalog category so related commands appear together. Chrome treats the move to these prefixed IDs as new commands, so existing assignments may need to be set again. Internal IDs continue to identify actions in preferences, history and backups. Keep published native IDs stable, including their category prefixes. Editing descriptions or adding commands preserves existing bindings.
 
 The toolbar home supports favorites/current tab (default), searchable commands, and feature sections. Pins, visibility, command/favorite/section ordering, search mode and palette placement sync as separate versioned preference keys. Concurrent changes to separate controls merge independently; Chrome resolves concurrent writes to the same key. No per-device UI overrides. Saving locally does not prove remote delivery.
 

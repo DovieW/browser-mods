@@ -103,3 +103,22 @@ export const commands = {
 } as const;
 
 export type CommandId = keyof typeof commands;
+
+// Chrome sorts by manifest command ID and uses it to remember assignments.
+export function browserCommandId(
+  id: string,
+  group: (typeof commands)[CommandId]["shortcutGroup"],
+): string {
+  return `${group.toLowerCase()}-${id}`;
+}
+
+const internalIds = new Map(
+  Object.entries(commands).map(([id, { shortcutGroup }]) => [
+    browserCommandId(id, shortcutGroup),
+    id,
+  ]),
+);
+
+export function internalCommandId(browserId: string): string {
+  return internalIds.get(browserId) ?? browserId;
+}
