@@ -1,3 +1,5 @@
+import { TabSettingsPanel } from "../../tabs/public-options";
+import { PopupItems } from "./popup-items";
 import { Input } from "./input";
 import { RdpCard } from "../../rdp-download/public-ui";
 import { ScreenshotLabelSettings } from "../../clipboard/public-ui";
@@ -19,7 +21,8 @@ import type { WorkspacePort } from "../adapters/browser";
 import {
   featureRoutes,
   optionsRoute,
-  pages,
+  optionsHash,
+  optionsSections,
   settings,
   workflow,
   workflows,
@@ -37,7 +40,14 @@ export function Options({
   const [route, setRoute] = useState(() => optionsRoute(location.hash));
   const { page, control } = route;
   const [shortcutQuery, setShortcutQuery] = useState("");
-  const [showHistory, setShowHistory] = useState(false);
+  const sectionFor = (target: string) =>
+    Object.entries(optionsSections).find(([, leaves]) =>
+      leaves.some((leaf) => leaf === target),
+    )?.[0];
+  const activeSection = sectionFor(page);
+  const [expanded, setExpanded] = useState<string[]>(() =>
+    activeSection ? [activeSection] : [],
+  );
   const [rdpTab, setRdpTab] = useState<{ id: number; url: string }>();
   const [query, setQuery] = useState("");
   const [origins, setOrigins] = useState<string[]>([]);
@@ -56,7 +66,11 @@ export function Options({
     const readRoute = () => {
       const next = optionsRoute(location.hash);
       setRoute(next);
-      setShowHistory(next.control === "shortcut-history");
+      const group = sectionFor(next.page);
+      if (group)
+        setExpanded((previous) =>
+          previous.includes(group) ? previous : [...previous, group],
+        );
       setQuery("");
       setNotice("");
     };
@@ -73,7 +87,10 @@ export function Options({
     element?.scrollIntoView({ block: "nearest" });
   }, [page, control, query]);
   useEffect(() => {
-    if (page !== featureRoutes.RDP[1]) return;
+    if (page !== featureRoutes.RDP[1]) {
+      setRdpTab(undefined);
+      return;
+    }
     const id = Number(new URLSearchParams(location.search).get("sourceTab"));
     if (!Number.isSafeInteger(id) || id <= 0) return;
     let active = true;
@@ -87,12 +104,9 @@ export function Options({
       active = false;
     };
   }, [page, port]);
-  function routeLink(target: string, id = "") {
-    return "#" + encodeURIComponent(target + (id ? "|" + id : ""));
-  }
   function navigate(target: string, id = "") {
     setQuery("");
-    location.hash = routeLink(target, id);
+    location.hash = optionsHash(target, id);
   }
   useEffect(() => {
     if (page === "Site access")
@@ -116,7 +130,8 @@ export function Options({
       active = false;
     };
   }, [page, port]);
-  function toggle(key: "pins" | "hidden", id: string) {
+  function toggleVisibility(id: string) {
+    const key = "hidden";
     void save(
       key,
       prefs[key].includes(id)
@@ -124,17 +139,14 @@ export function Options({
         : [...prefs[key], id],
     );
   }
-  function reorder(key: "order" | "pins", id: string, delta: number) {
-    const ids =
-      key === "order"
-        ? [...enabled].sort(byOrder).map((a) => a.id)
-        : [...prefs[key]];
+  function reorder(id: string, delta: number) {
+    const ids = [...enabled].sort(byOrder).map((a) => a.id);
     const index = ids.indexOf(id),
       next = index + delta;
     if (index < 0 || next < 0 || next >= ids.length) return;
     ids.splice(index, 1);
     ids.splice(next, 0, id);
-    void save(key, ids);
+    void save("order", ids);
   }
   const select = (
     label: string,
@@ -167,17 +179,59 @@ export function Options({
     <>
       <div className="settings-layout">
         <nav aria-label="Options sections" className="navigation">
-          {pages.map((p) => (
-            <a
-              key={p}
-              href={routeLink(p)}
-              aria-current={
-                page === p || (p === "Features" && feature) ? "page" : undefined
-              }
-            >
-              {p}
-            </a>
-          ))}
+          {Object.entries(optionsSections).map(([section, children], index) => {
+            if (!children.length)
+              return (
+                <a
+                  key={section}
+                  href={optionsHash(section)}
+                  aria-current={page === section ? "page" : undefined}
+                  onClick={() => {
+                    setQuery("");
+                  }}
+                >
+                  {section}
+                </a>
+              );
+            const open = expanded.includes(section);
+            const id = `settings-group-${index}`;
+            return (
+              <div key={section} className="settings-nav-group">
+                <button
+                  type="button"
+                  aria-expanded={open}
+                  aria-controls={id}
+                  onClick={() => {
+                    setExpanded((previous) =>
+                      open
+                        ? previous.filter((name) => name !== section)
+                        : [...previous, section],
+                    );
+                  }}
+                >
+                  <span aria-hidden="true" className="settings-chevron">
+                    {open ? "▾" : "▸"}
+                  </span>
+                  {section}
+                </button>
+                <ul id={id} hidden={!open}>
+                  {children.map((child) => (
+                    <li key={child}>
+                      <a
+                        href={optionsHash(child)}
+                        aria-current={page === child ? "page" : undefined}
+                        onClick={() => {
+                          setQuery("");
+                        }}
+                      >
+                        {child}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            );
+          })}
         </nav>
         <main>
           <label className="field">
@@ -219,28 +273,29 @@ export function Options({
             </section>
           ) : (
             <>
-              {feature && (
-                <a className="breadcrumb" href={routeLink("Features")}>
-                  Features
-                </a>
-              )}
               <h2
                 id={
-                  page === "Shortcuts"
-                    ? "shortcut-settings"
-                    : page === "Features"
-                      ? "mod-settings"
-                      : page === "Site access"
-                        ? "site-settings"
-                        : page === "Sync & backup"
-                          ? "backup-settings"
-                          : undefined
+                  {
+                    "Keyboard shortcuts": "shortcut-settings",
+                    "Assignment history": "shortcut-history",
+                    "Tab switching": "mod-settings",
+                    "Site access": "site-settings",
+                    "Interface backup": "backup-settings",
+                    "Shortcut backup": "shortcut-backup",
+                  }[page]
                 }
                 tabIndex={-1}
               >
                 {page}
               </h2>
-              {page === "Appearance & controls" && (
+              {page === "Toolbar popup" && (
+                <PopupItems
+                  actions={allActions}
+                  items={prefs.popupItems}
+                  save={(items) => save("popupItems", items)}
+                />
+              )}
+              {page === "Command palette" && (
                 <>
                   {select("Command palette location", "placement", [
                     ["toolbar", "Toolbar popup"],
@@ -265,24 +320,13 @@ export function Options({
                   <h3 id="action-order" tabIndex={-1}>
                     Actions
                   </h3>
-                  <p className="muted">
-                    Pin favorites, hide controls, and arrange your command list.
-                  </p>
                   {enabled.sort(byOrder).map((r) => (
                     <div className="custom-row" key={r.id}>
                       <span>{r.label}</span>
                       <button
-                        aria-pressed={prefs.pins.includes(r.id)}
-                        onClick={() => {
-                          toggle("pins", r.id);
-                        }}
-                      >
-                        Pin
-                      </button>
-                      <button
                         aria-pressed={prefs.hidden.includes(r.id)}
                         onClick={() => {
-                          toggle("hidden", r.id);
+                          toggleVisibility(r.id);
                         }}
                       >
                         Hide
@@ -290,7 +334,7 @@ export function Options({
                       <button
                         aria-label={`Move ${r.label} up`}
                         onClick={() => {
-                          reorder("order", r.id, -1);
+                          reorder(r.id, -1);
                         }}
                       >
                         ↑
@@ -298,31 +342,7 @@ export function Options({
                       <button
                         aria-label={`Move ${r.label} down`}
                         onClick={() => {
-                          reorder("order", r.id, 1);
-                        }}
-                      >
-                        ↓
-                      </button>
-                    </div>
-                  ))}
-                  <h3>Favorites order</h3>
-                  {prefs.pins.map((id) => (
-                    <div className="custom-row" key={id}>
-                      <span>
-                        {allActions.find((r) => r.id === id)?.label ?? id}
-                      </span>
-                      <button
-                        aria-label={`Move favorite ${id} up`}
-                        onClick={() => {
-                          reorder("pins", id, -1);
-                        }}
-                      >
-                        ↑
-                      </button>
-                      <button
-                        aria-label={`Move favorite ${id} down`}
-                        onClick={() => {
-                          reorder("pins", id, 1);
+                          reorder(r.id, 1);
                         }}
                       >
                         ↓
@@ -331,7 +351,7 @@ export function Options({
                   ))}
                 </>
               )}
-              {page === "Shortcuts" && (
+              {page === "Keyboard shortcuts" && (
                 <>
                   <div className="settings-actions">
                     <button
@@ -341,23 +361,7 @@ export function Options({
                     >
                       Edit in Chrome
                     </button>
-                    <button
-                      id="shortcut-history"
-                      aria-expanded={showHistory}
-                      onClick={() => {
-                        setShowHistory(!showHistory);
-                      }}
-                    >
-                      Assignment history & recovery
-                    </button>
                   </div>
-                  {showHistory && (
-                    <iframe
-                      className="settings-frame"
-                      title="Shortcut setup and history"
-                      src="history.html"
-                    />
-                  )}
                   <label className="field">
                     Search shortcuts
                     <Input
@@ -397,28 +401,20 @@ export function Options({
                   })}
                 </>
               )}
-              {page === "Features" &&
-                workflows.map((name) => {
-                  const entries = Object.values(featureRoutes).filter(
-                    ([group]) => group === name,
-                  );
-                  if (!entries.length) return null;
-                  return (
-                    <section key={name} className="feature-group">
-                      <h3>{name}</h3>
-                      {entries.map(([, label]) => (
-                        <a
-                          key={label}
-                          className="feature-link"
-                          href={routeLink(label)}
-                        >
-                          {label}
-                          <span aria-hidden="true">›</span>
-                        </a>
-                      ))}
-                    </section>
-                  );
-                })}
+              {page === "Assignment history" && (
+                <iframe
+                  className="settings-frame"
+                  title="Shortcut setup and history"
+                  src="history.html?view=options"
+                />
+              )}
+              {page === "Shortcut backup" && (
+                <iframe
+                  className="settings-frame"
+                  title="Shortcut backup and recovery"
+                  src="legacy.html?view=shortcut-backup"
+                />
+              )}
               {feature && feature[0] !== "RDP" && (
                 <label className="check">
                   <input
@@ -448,7 +444,7 @@ export function Options({
                   {splitAccess ? (
                     <p id="split-screenshots" tabIndex={-1}>
                       Split screenshot access enabled.{" "}
-                      <a href={routeLink("Site access")}>Manage access</a>
+                      <a href={optionsHash("Site access")}>Manage access</a>
                     </p>
                   ) : (
                     <button
@@ -471,16 +467,7 @@ export function Options({
                   )}
                 </>
               )}
-              {page === "Tab switching" && (
-                <button
-                  id="tab-switching"
-                  onClick={() => {
-                    void port.open(port.url("legacy.html")).catch(fail);
-                  }}
-                >
-                  Tab-switching behavior
-                </button>
-              )}
+              {page === "Tab switching" && <TabSettingsPanel />}
               {page === "RDP download helper" && (
                 <div id="rdp-settings" tabIndex={-1}>
                   <RdpCard url={rdpTab?.url ?? ""} tabId={rdpTab?.id} />
@@ -515,7 +502,7 @@ export function Options({
                   )}
                 </>
               )}
-              {page === "Sync & backup" && (
+              {page === "Interface backup" && (
                 <>
                   <p>
                     Interface preferences sync through Chrome. Changes to
@@ -581,13 +568,6 @@ export function Options({
                       }}
                     />
                   </label>
-                  <button
-                    onClick={() => {
-                      void port.open(port.url("legacy.html")).catch(fail);
-                    }}
-                  >
-                    Shortcut backup & recovery
-                  </button>
                   <button
                     onClick={() => {
                       void port

@@ -14,7 +14,7 @@ The [initial comparison is complete](performance/ui-runtime-2026-11-16.md). **Th
 
 WXT 0.21.5 owns the production build and manifest generation. Its Vite build aliases React imports to Redact and uses the existing component and packaged-browser checks. The project checks its own TypeScript in strict mode and skips checking dependency declarations because WXT's browser types redeclare HAR types that Chrome's declarations also supply. Esbuild remains in the test harness. See the [development workflow](development.md) and [packaged popup measurements](performance.md).
 
-The workspace uses the shadcn Input and Dropdown Menu source patterns with local CSS and the existing shared color tokens. The menu uses `@radix-ui/react-dropdown-menu` 2.2.1. The build resolves its React/React DOM imports to Redact and rejects native React bundles. The existing CSS pipeline styles both components. Radix is bundled only in the popup. The packaged menu fixture checks open, selection and keyboard focus restoration. [Input source](https://ui.shadcn.com/r/styles/new-york-v4/input.json) · [Dropdown Menu source](https://ui.shadcn.com/r/styles/new-york-v4/dropdown-menu.json)
+The workspace uses the shadcn Input source pattern and local CSS. The Options sidebar uses disclosure buttons and links. The toolbar picker uses native select and button controls, and the former popup row menu and its Radix dependency have been removed. [Input source](https://ui.shadcn.com/r/styles/new-york-v4/input.json)
 
 ## Next implementation: runtime validation with Zod
 

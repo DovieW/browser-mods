@@ -23,11 +23,21 @@ const path = require("node:path");
     const id = new URL(worker.url()).host;
     const base = `chrome-extension://${id}/`;
     const errors = [];
-    const popup = await context.newPage();
-    popup.on("pageerror", (e) => errors.push(e.message));
-    await popup.goto(base + "popup.html");
-    await popup.locator(".result").first().waitFor();
-    // Chrome can initially measure the toolbar popup in a short viewport.
+    const page = async (url) => {
+      const opened = await context.newPage();
+      opened.on("pageerror", (e) => errors.push(e.message));
+      await opened.goto(url);
+      return opened;
+    };
+    await worker.evaluate(() =>
+      chrome.storage.sync.set({
+        "mods.ui.v1.pins": ["copy-screenshot-plain"],
+      }),
+    );
+    let popup = await page(base + "popup.html");
+    const customize = popup.getByRole("button", { name: "Customize popup" });
+    await customize.waitFor();
+    assert.equal(await popup.locator(".result, kbd, nav, input").count(), 0);
     await popup.setViewportSize({ width: 800, height: 153 });
     assert.equal(
       (await popup.locator(".popup-workspace").boundingBox()).height,
@@ -38,146 +48,90 @@ const path = require("node:path");
       .locator(".popup-workspace")
       .boundingBox();
     assert.deepEqual({ width, height }, { width: 800, height: 600 });
-    assert.equal(await popup.locator(".result").count(), 4);
-    await popup.locator("#search").fill("screenshot");
-    const screenshotCommand = popup.getByRole("option", {
-      name: /Copy screenshot with URL/,
-    });
-    const screenshotSetting = popup.getByRole("option", {
-      name: /Screenshot URL label/,
-    });
-    await screenshotCommand.waitFor();
-    await screenshotSetting.waitFor();
-    await popup.locator("#search").press("ArrowDown");
-    assert.equal(await popup.locator("[aria-selected=true]").count(), 1);
-    await popup.locator("#search").fill("");
-    const options = await context.newPage();
-    options.on("pageerror", (e) => errors.push(e.message));
-    await options.goto(base + "options.html#Mods%7CscreenshotLabelCorner");
-    await options.getByRole("heading", { name: "Screenshots" }).waitFor();
-    await options.locator("#screenshotLabelCorner").waitFor();
-    await options
-      .getByRole("link", { name: "Features", exact: true })
-      .first()
-      .click();
-    await popup
-      .getByRole("button", { name: "All actions", exact: true })
-      .click();
-    await popup
-      .getByRole("heading", { name: "Clipboard & capture", exact: true })
-      .waitFor();
-    if (process.env.MODS_UI_ARTIFACTS) {
-      await popup.setViewportSize({ width: 800, height: 600 });
-      await popup.screenshot({
-        path: path.join(process.env.MODS_UI_ARTIFACTS, "all-actions.png"),
-      });
+
+    const settingsOpened = context.waitForEvent("page");
+    await customize.click();
+    const picker = await settingsOpened;
+    await picker.getByRole("heading", { name: "Toolbar popup" }).waitFor();
+    await picker.close();
+
+    const options = await page(base + "options.html");
+    const nav = options.getByRole("navigation", { name: "Options sections" });
+    const heading = (name) =>
+      options.getByRole("heading", { name, exact: true });
+    const open = async (group, leaf) => {
+      const disclosure = nav.getByRole("button", { name: group, exact: true });
+      if ((await disclosure.getAttribute("aria-expanded")) === "false")
+        await disclosure.click();
+      await nav.getByRole("link", { name: leaf, exact: true }).click();
+      await heading(leaf).waitFor();
+    };
+    await heading("Tab switching").waitFor();
+    const pause = options.getByLabel("Pause before a fresh switch (seconds)");
+    await pause.fill("2.75");
+    await pause.press("Tab");
+    const readSync = (key) =>
+      worker.evaluate(
+        async (key) => (await chrome.storage.sync.get(key))[key],
+        key,
+      );
+    async function until(read, expected) {
+      for (let attempt = 0; attempt < 80; attempt++) {
+        if (JSON.stringify(await read()) === JSON.stringify(expected)) return;
+        await new Promise((resolve) => setTimeout(resolve, 25));
+      }
+      assert.deepEqual(await read(), expected);
     }
-    await popup
-      .getByRole("button", { name: "Clipboard & capture", exact: true })
-      .click();
-    const copyPlain = "Copy screenshot without URL";
-    const menu = popup.getByRole("button", {
-      name: `More actions for ${copyPlain}`,
-    });
-    await menu.focus();
-    await menu.press("Enter");
-    await popup.getByRole("menuitem", { name: "Add to Favorites" }).waitFor();
-    await popup.keyboard.press("Escape");
-    await popup.getByRole("menu").waitFor({ state: "hidden" });
-    await popup.waitForFunction(
-      (label) => document.activeElement?.getAttribute("aria-label") === label,
-      `More actions for ${copyPlain}`,
+    await until(() => readSync("tabSwitchingV1-pauseMs"), 2750);
+    await options.getByRole("button", { name: "Restore defaults" }).click();
+    await until(() => readSync("tabSwitchingV1-pauseMs"), 1500);
+    await nav
+      .getByRole("button", { name: "Features", exact: true })
+      .press("Enter");
+    await nav
+      .getByRole("link", { name: "Screenshots" })
+      .waitFor({ state: "hidden" });
+    await nav
+      .getByRole("button", { name: "Features", exact: true })
+      .press("Space");
+    await nav.getByRole("link", { name: "Screenshots" }).waitFor();
+    await options.goto(base + "options.html#Mods%7CscreenshotLabelCorner");
+    await heading("Screenshots").waitFor();
+    await options.waitForFunction(
+      () => document.activeElement?.id === "screenshotLabelCorner",
     );
-    await menu.click();
-    await popup.getByRole("menuitem", { name: "Add to Favorites" }).click();
-    await popup.getByRole("button", { name: "Favorites", exact: true }).click();
-    await popup.getByRole("button", { name: copyPlain, exact: true }).waitFor();
-    await popup
-      .getByRole("button", { name: "Clipboard & capture", exact: true })
-      .click();
-    await popup.locator("#search").fill("screenshot");
-    await popup.locator("#search").press("Escape");
-    await popup
-      .getByRole("heading", { name: "Clipboard & capture", exact: true })
-      .waitFor();
-    await popup.setViewportSize({ width: 390, height: 430 });
     assert.equal(
-      await popup.evaluate(
-        () => document.documentElement.scrollWidth <= innerWidth,
-      ),
-      true,
+      await nav
+        .getByRole("link", { name: "Screenshots" })
+        .getAttribute("aria-current"),
+      "page",
     );
-    await popup.setViewportSize({ width: 800, height: 600 });
-    if (process.env.MODS_UI_ARTIFACTS)
-      await popup.screenshot({
-        path: path.join(process.env.MODS_UI_ARTIFACTS, "popup.png"),
-      });
-    await options
-      .getByRole("link", { name: "Appearance & controls", exact: true })
+
+    await open("Shortcuts", "Assignment history");
+    const assignmentFrame = options.frameLocator(
+      'iframe[title="Shortcut setup and history"]',
+    );
+    await assignmentFrame.locator("#shortcuts tr").first().waitFor();
+    assert.equal(await assignmentFrame.locator("#shortcuts tr").count(), 25);
+    await options.goto(base + "options.html#Shortcuts%7Cshortcut-history");
+    await heading("Assignment history").waitFor();
+    await open("Sync & backup", "Shortcut backup");
+    const backup = options.frameLocator(
+      'iframe[title="Shortcut backup and recovery"]',
+    );
+    await backup
+      .getByRole("button", { name: "Remember current shortcuts" })
       .click();
-    await options
-      .getByLabel("Palette search", { exact: true })
-      .selectOption("commands");
-    await popup.locator("#search").fill("Find tab");
-    assert.equal(await popup.locator(".result").count(), 0);
-    await options
-      .getByLabel("Palette search", { exact: true })
-      .selectOption("scoped");
-    await popup.getByRole("option", { name: /Find tab/ }).waitFor();
-    await popup.getByRole("option", { name: /Find tab/ }).click();
-    await popup.getByRole("combobox", { name: "Search tabs" }).waitFor();
-    await popup.getByRole("combobox", { name: "Search tabs" }).press("Escape");
-    await popup
-      .getByRole("combobox", { name: "Search Browser Mods" })
-      .waitFor();
-    await options
-      .getByRole("link", { name: "Features", exact: true })
-      .first()
-      .click();
-    await options
-      .getByRole("link", { name: "Screenshots", exact: true })
-      .click();
-    await options
-      .getByLabel("Enable Clipboard & capture", { exact: true })
-      .uncheck();
-    await popup.locator("#search").fill("screenshot");
-    await screenshotCommand.waitFor({ state: "hidden" });
-    await screenshotSetting.waitFor();
-    await options
-      .getByRole("link", { name: "Appearance & controls", exact: true })
-      .click();
-    await options.getByLabel("Include disabled features in search").check();
-    const disabledClipboardCommands = popup.getByRole("option", {
-      name: /Enable Clipboard/,
+    const exportButton = backup.getByRole("button", {
+      name: "Export shortcut backup",
     });
-    await disabledClipboardCommands.nth(1).waitFor();
-    assert.equal(await disabledClipboardCommands.count(), 2);
-    await options
-      .getByRole("link", { name: "Features", exact: true })
-      .first()
-      .click();
-    await options
-      .getByRole("link", { name: "Screenshots", exact: true })
-      .click();
-    await options
-      .getByLabel("Enable Clipboard & capture", { exact: true })
-      .check();
-    await options.getByRole("link", { name: "Shortcuts", exact: true }).click();
-    await options
-      .getByRole("button", { name: "Assignment history & recovery" })
-      .click();
-    await options
-      .frameLocator("iframe")
-      .locator("#shortcuts tr")
-      .first()
-      .waitFor();
-    assert.equal(
-      await options.frameLocator("iframe").locator("#shortcuts tr").count(),
-      25,
+    const download = options.waitForEvent("download");
+    await exportButton.click();
+    assert.match(
+      (await download).suggestedFilename(),
+      /^simple-shortcuts-.+\.json$/,
     );
-    await options
-      .getByRole("link", { name: "Sync & backup", exact: true })
-      .click();
+    await open("Sync & backup", "Interface backup");
     await options.getByLabel("Import interface settings").setInputFiles({
       name: "bad.json",
       mimeType: "application/json",
@@ -188,62 +142,168 @@ const path = require("node:path");
       .filter({ hasText: "Invalid settings backup" })
       .waitFor();
     await options.getByRole("button", { name: "Dismiss error" }).click();
+    await open("Appearance & controls", "Toolbar popup");
+    const field = options.getByLabel("Add an item");
+    const add = async (id) => {
+      await field.selectOption(id);
+      await options.getByRole("button", { name: "Add", exact: true }).click();
+    };
+    const curatedKey = "mods.ui.v1.popupItems";
+    await add("copy-screenshot");
+    await until(() => readSync(curatedKey), ["copy-screenshot"]);
+    await add("pin-tab");
+    await until(() => readSync(curatedKey), ["copy-screenshot", "pin-tab"]);
+    await add("rdp-tools");
+    await until(
+      () => readSync(curatedKey),
+      ["copy-screenshot", "pin-tab", "rdp-tools"],
+    );
     await options
-      .getByRole("link", { name: "Appearance & controls", exact: true })
+      .getByRole("button", { name: "Move Pin / unpin tabs up" })
       .click();
+    const order = ["pin-tab", "copy-screenshot", "rdp-tools"];
+    await until(() => readSync(curatedKey), order);
+    popup = await page(base + "popup.html");
+    await popup.locator(".result").nth(1).waitFor();
+    const commands = () => popup.locator(".result").allTextContents();
+    assert.deepEqual(await commands(), [
+      "Pin / unpin tabs",
+      "Copy screenshot with URL",
+    ]);
+    assert.equal(await popup.locator("kbd, nav, input").count(), 0);
+    assert.equal(
+      await popup
+        .getByRole("button", { name: "RDP download helper settings" })
+        .count(),
+      0,
+    );
+    // Shortcut assignments never decide which picks are visible.
+    assert.ok(
+      await popup.evaluate(async () =>
+        (await chrome.commands.getAll()).some(
+          ({ name, shortcut }) => name.endsWith("-copy-screenshot") && shortcut,
+        ),
+      ),
+    );
+    await open("Appearance & controls", "Command palette");
+    const visibility = options
+      .locator(".custom-row")
+      .filter({ hasText: "Copy screenshot with URL" });
+    await visibility.getByRole("button", { name: "Hide" }).click();
+    await until(() => readSync("mods.ui.v1.hidden"), ["copy-screenshot"]);
+    assert.deepEqual(await commands(), [
+      "Pin / unpin tabs",
+      "Copy screenshot with URL",
+    ]);
+
+    await worker.evaluate(() =>
+      chrome.storage.session.set({ "mods.palette.open": true }),
+    );
+    const palette = await page(base + "popup.html");
+    const input = palette.getByRole("combobox", {
+      name: "Search Browser Mods",
+    });
+    await palette.setViewportSize({ width: 620, height: 61 });
+    await palette.getByRole("option").first().waitFor();
+    const paletteViewport = await palette
+      .locator(".palette-layout")
+      .boundingBox();
+    assert.equal(paletteViewport.height, 430);
+    await palette.setViewportSize({ width: 800, height: 600 });
+    await input.fill("screenshot");
+    const screenshotCommand = palette.getByRole("option", {
+      name: /Copy screenshot with URL/,
+    });
+    assert.equal(await screenshotCommand.count(), 0);
+    await visibility.getByRole("button", { name: "Hide" }).click();
+    await screenshotCommand.waitFor();
+    await input.press("ArrowDown");
+    assert.equal(await palette.locator("[aria-selected=true]").count(), 1);
+    await input.fill("Find tab");
+    await palette
+      .getByRole("option", { name: "Find tab", exact: true })
+      .click();
+    await palette
+      .getByRole("combobox", { name: "Search tabs" })
+      .press("Escape");
+    await input.waitFor();
+    for (const mode of ["commands", "everything", "scoped"]) {
+      await options
+        .getByLabel("Palette search", { exact: true })
+        .selectOption(mode);
+      await input.fill("copy-url");
+      await palette.getByRole("option", { name: /Copy links/ }).waitFor();
+    }
+    await open("Features", "Screenshots");
+    await options.getByLabel("Enable Clipboard & capture").uncheck();
+    await popup
+      .getByRole("button", { name: "Copy screenshot with URL" })
+      .waitFor({ state: "hidden" });
+    await input.fill("screenshot");
+    await screenshotCommand.waitFor({ state: "hidden" });
+    await open("Appearance & controls", "Command palette");
+    await options.getByLabel("Include disabled features in search").check();
+    await palette
+      .getByRole("option", {
+        name: /Enable Clipboard.*Copy screenshot with URL/,
+      })
+      .waitFor();
+    await open("Features", "Screenshots");
+    await options.getByLabel("Enable Clipboard & capture").check();
+
     await options.getByLabel("Search settings").fill("location");
     await options
       .getByRole("button", { name: /Command palette location/ })
       .click();
-    assert.equal(
-      await options
-        .locator("#placement")
-        .evaluate((el) => el === document.activeElement),
-      true,
+    await options.waitForFunction(
+      () => document.activeElement?.id === "placement",
     );
-    for (const search of ["scoped", "commands", "everything"]) {
-      await options
-        .getByLabel("Palette search", { exact: true })
-        .selectOption(search);
-      await popup.locator("#search").fill("copy-url");
-      await popup.getByRole("option", { name: /Copy links/ }).waitFor();
-    }
     await options.getByLabel("Search settings").fill("screenshot url");
     await options.getByRole("button", { name: /Screenshot URL label/ }).click();
-    await options.locator("#screenshotLabelCorner").waitFor();
-    assert.equal(
-      await options
-        .locator("#screenshotLabelCorner")
-        .evaluate((el) => el === document.activeElement),
-      true,
+    await options.waitForFunction(
+      () => document.activeElement?.id === "screenshotLabelCorner",
     );
     await options.goBack();
-    await options
-      .getByRole("heading", { name: "Appearance & controls" })
-      .waitFor();
+    await heading("Command palette").waitFor();
     await options.goForward();
-    await options.getByRole("heading", { name: "Screenshots" }).waitFor();
-    if (process.env.MODS_UI_ARTIFACTS)
-      await options.screenshot({
-        path: path.join(process.env.MODS_UI_ARTIFACTS, "options.png"),
-      });
-    await popup.locator("#search").fill("");
-    await popup
-      .getByRole("button", { name: "Clipboard & capture", exact: true })
+    await heading("Screenshots").waitFor();
+    await options.setViewportSize({ width: 390, height: 640 });
+    assert.ok(
+      await options.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    );
+    await popup.setViewportSize({ width: 390, height: 430 });
+    assert.ok(
+      await popup.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    );
+
+    const portalUrl = "https://office.example.test/vdesk/webtop.eui";
+    await context.route(portalUrl, (route) =>
+      route.fulfill({ body: "Portal fixture" }),
+    );
+    const portal = await page(portalUrl);
+    const rdpPopup = await context.newPage();
+    await portal.bringToFront();
+    await rdpPopup.goto(base + "popup.html");
+    const rdpOpened = context.waitForEvent("page");
+    await rdpPopup
+      .getByRole("button", { name: "RDP download helper settings" })
       .click();
-    await menu.click();
-    const openedSettings = context.waitForEvent("page");
-    await popup.getByRole("menuitem", { name: "Feature settings" }).click();
-    const settingsTab = await openedSettings;
-    await settingsTab.getByRole("heading", { name: "Screenshots" }).waitFor();
-    await settingsTab.close();
-    const launcher = await context.newPage();
-    await launcher.goto(base + "launcher.html");
+    const rdpSettings = await rdpOpened;
+    await rdpSettings
+      .getByRole("heading", { name: "RDP download helper" })
+      .waitFor();
+    await rdpSettings.getByLabel("Desktop link text").waitFor();
+    await rdpSettings.close();
+    const launcher = await page(base + "launcher.html");
     await launcher.waitForTimeout(200);
     assert.equal(await launcher.locator("#app").innerText(), "");
     assert.deepEqual(errors, []);
     console.log(
-      "PASS popup navigation, Radix row menus, live sync, search, narrow layout, Options history and deep links, invalid import, unauthorized launcher",
+      "PASS curated popup, context, single sidebar, legacy links, inline settings, maintenance panes, palette search and launcher authorization",
     );
   } finally {
     await context.close();

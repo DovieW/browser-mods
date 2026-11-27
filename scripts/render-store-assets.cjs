@@ -1,4 +1,4 @@
-// Store screenshots use the real popup in a disposable extension profile.
+// Store screenshots use the native maintenance view in a disposable profile.
 const fs = require("node:fs/promises");
 const path = require("node:path");
 const os = require("node:os");
@@ -35,7 +35,7 @@ const sharp = require("sharp");
       (await context.waitForEvent("serviceworker"));
     const id = worker.url().split("/")[2];
     const popup = await context.newPage();
-    await popup.goto(`chrome-extension://${id}/popup.html`);
+    await popup.goto(`chrome-extension://${id}/legacy.html`);
     await popup.locator(".shortcut-item").first().waitFor();
     await popup.emulateMedia({ colorScheme: "dark" });
     const capture = async () =>
@@ -82,7 +82,7 @@ const sharp = require("sharp");
       .filter({ hasText: "No saved setup" })
       .waitFor();
     await popup.locator("#search").fill("copy");
-    if ((await popup.locator(".shortcut-item").count()) !== 2)
+    if ((await popup.locator(".shortcut-item").count()) !== 3)
       throw Error("Clipboard commands missing");
     const clipboard = await capture();
     await worker.evaluate(async () => {
@@ -129,7 +129,7 @@ const sharp = require("sharp");
       "Jump to your last active tab.<br>Walk backward through recent tabs.<br>Keep Chrome moving.",
       ["Tabs", "Groups", "Windows"],
       overview,
-      "Actual extension popup · assign your preferred keys in Edit keys",
+      "Shortcut maintenance view · assign your preferred keys in Edit keys",
     );
     await screenshot(
       "screenshot-2-backup.png",

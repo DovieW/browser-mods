@@ -41,7 +41,6 @@
     "wxt": "0.21.5"
   },
   "dependencies": {
-    "@radix-ui/react-dropdown-menu": "2.2.1",
     "@tanstack/redact": "0.3.1"
   }
 }

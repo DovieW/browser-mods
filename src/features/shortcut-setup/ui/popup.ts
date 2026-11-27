@@ -92,43 +92,49 @@ async function run(command: string, button: HTMLButtonElement) {
 }
 
 export async function initialize() {
-  audio = createAudioView(showStatus, sendAction);
+  const backupPane =
+    new URLSearchParams(location.search).get("view") === "shortcut-backup";
   onPageClose(() => {
     clearTimeout(statusTimer);
     port.dispose();
   });
-
-  setupTabSettings();
   setupShortcutMemory();
-  listen(element("moreTools"), "click", (event) => {
-    const panel = element("backupTools");
-    panel.hidden = !panel.hidden;
-    (event.currentTarget as HTMLButtonElement).setAttribute(
-      "aria-expanded",
-      String(!panel.hidden),
-    );
-  });
   listen(element<HTMLInputElement>("search"), "input", renderCommands);
-  listen(element("manageShortcuts"), "click", async () => {
-    try {
-      await port.editKeys();
-      window.close();
-    } catch {
-      showStatus("Could not open Chrome shortcut settings.");
-    }
-  });
-  listen(element("pauseAll"), "click", (event) =>
-    run("pause-all-tabs", event.currentTarget as HTMLButtonElement),
-  );
-  listen(element("revokeMedia"), "click", async () => {
-    try {
-      await audio.revokeMedia();
-      await audio.loadAudioTabs();
-      showStatus("Site access removed.", true);
-    } catch {
-      showStatus("Could not remove site access.");
-    }
-  });
+  if (backupPane) {
+    document.body.classList.add("backup-pane");
+    element("backupTools").hidden = false;
+  } else {
+    audio = createAudioView(showStatus, sendAction);
+    setupTabSettings();
+    listen(element("moreTools"), "click", (event) => {
+      const panel = element("backupTools");
+      panel.hidden = !panel.hidden;
+      (event.currentTarget as HTMLButtonElement).setAttribute(
+        "aria-expanded",
+        String(!panel.hidden),
+      );
+    });
+    listen(element("manageShortcuts"), "click", async () => {
+      try {
+        await port.editKeys();
+        window.close();
+      } catch {
+        showStatus("Could not open Chrome shortcut settings.");
+      }
+    });
+    listen(element("pauseAll"), "click", (event) =>
+      run("pause-all-tabs", event.currentTarget as HTMLButtonElement),
+    );
+    listen(element("revokeMedia"), "click", async () => {
+      try {
+        await audio.revokeMedia();
+        await audio.loadAudioTabs();
+        showStatus("Site access removed.", true);
+      } catch {
+        showStatus("Could not remove site access.");
+      }
+    });
+  }
   try {
     state.commands = await readCommands();
     renderCommands();
@@ -138,6 +144,7 @@ export async function initialize() {
     } catch {
       element("memorySummary").textContent = "Backup unavailable";
     }
+    if (backupPane) return;
     const { lastError } = await port.lastError();
     if (lastError) {
       const command = state.commands.find(

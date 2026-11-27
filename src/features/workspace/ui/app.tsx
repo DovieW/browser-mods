@@ -1,19 +1,13 @@
 import { Input } from "./input";
-import type { ActionMenu } from "./action-menu";
-import {
-  PlaylistDurationCard,
-  playlistTab,
-} from "../../playlist-duration/public-ui";
 import { shortCommandLabel } from "../../../ui/shortcut-labels";
 import { commandErrorMessage } from "../../../core/actions/errors";
 import type { OptionsProps } from "./options";
 import type { ComponentType } from "react";
 import {
   featureRoutes,
-  pages,
+  defaultOptionsPage,
   settings,
   workflow,
-  workflows,
   type Result,
 } from "./model";
 import { createRoot } from "react-dom/client";
@@ -31,15 +25,11 @@ const message = (e: unknown) =>
 function App({
   port,
   mode,
-  initialPalette = false,
   Settings,
-  RowMenu,
 }: {
   port: WorkspacePort;
   mode: "popup" | "options" | "launcher";
-  initialPalette?: boolean;
   Settings: ComponentType<OptionsProps> | undefined;
-  RowMenu: typeof ActionMenu | undefined;
 }) {
   const [prefs, setPrefs] = useState<Preferences>({ ...preferenceDefaults });
   const [ready, setReady] = useState(false),
@@ -54,7 +44,6 @@ function App({
     Awaited<ReturnType<WorkspacePort["bookmarks"]>>
   >([]);
   const [busy, setBusy] = useState(false);
-  const [section, setSection] = useState<string>("Favorites");
   const [current, setCurrent] = useState<
     Awaited<ReturnType<WorkspacePort["currentTab"]>>
   >({
@@ -64,12 +53,7 @@ function App({
   useEffect(() => {
     if (mode === "popup") void port.currentTab().then(setCurrent).catch(fail);
   }, [mode, port]);
-  const playlist =
-    mode === "popup" && !prefs.disabled.includes("Media")
-      ? playlistTab(current.url)
-      : null;
-  const palette = mode === "launcher" || initialPalette;
-  const browse = mode === "popup" && !palette;
+  const palette = mode !== "options";
   const input = useRef<HTMLInputElement>(null),
     connection = useRef<MessagePort | null>(null);
   const close = () => {
@@ -179,7 +163,7 @@ function App({
   }, [port, prefs.searchMode, query, scope]);
   useEffect(() => {
     setSelected(0);
-  }, [query, scope, section]);
+  }, [query, scope]);
   useEffect(() => {
     document
       .getElementById(`result-${selected}`)
@@ -201,10 +185,7 @@ function App({
     }
   }
   async function openOptions(target: string) {
-    const source =
-      target === featureRoutes.RDP[1] && current.id !== undefined
-        ? `?sourceTab=${current.id}`
-        : "";
+    const source = current.id !== undefined ? `?sourceTab=${current.id}` : "";
     await port.open(
       port.url(`options.html${source}#${encodeURIComponent(target)}`),
     );
@@ -233,110 +214,77 @@ function App({
   let results: Result[] = enabled
     .filter((r) => !prefs.hidden.includes(r.id))
     .sort(byOrder);
-  const finding = !!query || palette || !!scope;
-  const categories = workflows.filter(
-    (name) =>
-      name === "Web tools" ||
-      name === "Bookmarks & reading" ||
-      results.some((action) => workflow(action) === name),
-  );
-  const activeSection =
-    categories.includes(section as (typeof workflows)[number]) ||
-    section === "All actions"
-      ? section
-      : "Favorites";
-  if (finding) {
-    if (scope === "tabs") results = [];
-    if (scope === "bookmarks") results = [];
-    if (!scope && prefs.searchMode !== "commands")
-      results.push(
-        ...settings.map((s) => ({
-          id: `setting-${s.control}`,
-          label: s.label,
-          group: "Settings",
-          run: () => openOptions(s.page + "|" + s.control),
-        })),
-        {
-          id: "find-tabs",
-          label: "Find tab",
-          group: "Search",
-          stay: true,
-          run: () => {
-            setScope("tabs");
-            setQuery("");
-            input.current?.focus();
-            return Promise.resolve();
-          },
+  if (scope === "tabs") results = [];
+  if (scope === "bookmarks") results = [];
+  if (!scope && prefs.searchMode !== "commands")
+    results.push(
+      ...settings.map((s) => ({
+        id: `setting-${s.control}`,
+        label: s.label,
+        group: "Settings",
+        run: () => openOptions(s.page + "|" + s.control),
+      })),
+      {
+        id: "find-tabs",
+        label: "Find tab",
+        group: "Search",
+        stay: true,
+        run: () => {
+          setScope("tabs");
+          setQuery("");
+          input.current?.focus();
+          return Promise.resolve();
         },
-        {
-          id: "find-bookmarks",
-          label: "Find bookmark",
-          group: "Search",
-          stay: true,
-          run: async () => {
-            if (await port.requestBookmarks()) {
-              setScope("bookmarks");
-              setQuery("");
-              input.current?.focus();
-            } else throw Error("Bookmark access declined.");
-          },
-        },
-      );
-    if (
-      scope === "tabs" ||
-      (!scope && prefs.searchMode === "everything" && query)
-    )
-      results.push(
-        ...tabs.map((t) => ({
-          id: `tab-${t.id}`,
-          label: t.title,
-          group: "Tabs search",
-          run: () => port.focus(t.id),
-        })),
-      );
-    if (
-      scope === "bookmarks" ||
-      (!scope && prefs.searchMode === "everything" && query)
-    )
-      results.push(
-        ...bookmarks.map((b) => ({
-          id: `bookmark-${b.id}`,
-          label: b.title,
-          group: "Bookmarks",
-          run: () => port.open(b.url),
-        })),
-      );
-    if (prefs.includeDisabled && !scope && query)
-      results.push(
-        ...allActions
-          .filter((r) => prefs.disabled.includes(r.group))
-          .map((r) => ({
-            ...r,
-            label: `Enable ${r.group} to use: ${r.label}`,
-            group: "Disabled",
-            run: () => openOptions(r.setting ?? "Features"),
-          })),
-      );
-  } else if (activeSection === "Favorites") {
-    results = results
-      .filter((r) => prefs.pins.includes(r.id))
-      .sort((a, b) => prefs.pins.indexOf(a.id) - prefs.pins.indexOf(b.id));
-  } else if (activeSection !== "All actions") {
-    results = results.filter((r) => workflow(r) === activeSection);
-    if (activeSection === "Bookmarks & reading")
-      results.push({
+      },
+      {
         id: "find-bookmarks",
         label: "Find bookmark",
-        group: "Bookmarks & reading",
+        group: "Search",
         stay: true,
         run: async () => {
-          if (!(await port.requestBookmarks()))
-            throw Error("Bookmark access declined.");
-          setScope("bookmarks");
-          input.current?.focus();
+          if (await port.requestBookmarks()) {
+            setScope("bookmarks");
+            setQuery("");
+            input.current?.focus();
+          } else throw Error("Bookmark access declined.");
         },
-      });
-  }
+      },
+    );
+  if (
+    scope === "tabs" ||
+    (!scope && prefs.searchMode === "everything" && query)
+  )
+    results.push(
+      ...tabs.map((t) => ({
+        id: `tab-${t.id}`,
+        label: t.title,
+        group: "Tabs search",
+        run: () => port.focus(t.id),
+      })),
+    );
+  if (
+    scope === "bookmarks" ||
+    (!scope && prefs.searchMode === "everything" && query)
+  )
+    results.push(
+      ...bookmarks.map((b) => ({
+        id: `bookmark-${b.id}`,
+        label: b.title,
+        group: "Bookmarks",
+        run: () => port.open(b.url),
+      })),
+    );
+  if (prefs.includeDisabled && !scope && query)
+    results.push(
+      ...allActions
+        .filter((r) => prefs.disabled.includes(r.group))
+        .map((r) => ({
+          ...r,
+          label: `Enable ${r.group} to use: ${r.label}`,
+          group: "Disabled",
+          run: () => openOptions(r.setting ?? defaultOptionsPage),
+        })),
+    );
   const aliases: Record<string, string> = {
     "copy-screenshot": "screenshot capture image clipboard with url",
     "copy-screenshot-plain": "screenshot capture image clipboard plain no url",
@@ -365,14 +313,9 @@ function App({
       setBusy(false);
     }
   }
-  const groups =
-    !finding && activeSection === "All actions"
-      ? categories.filter((name) => results.some((r) => workflow(r) === name))
-      : [""];
-  const keyboardList = !browse || Boolean(query || scope);
   return (
     <div
-      className={`workspace ${mode === "options" ? "options" : browse ? "popup-workspace" : "palette-workspace"}`}
+      className={`workspace ${mode === "options" ? "options" : "palette-workspace"}`}
     >
       {mode === "options" && (
         <header>
@@ -424,12 +367,10 @@ function App({
               type="search"
               role="combobox"
               aria-label={scope ? `Search ${scope}` : "Search Browser Mods"}
-              aria-expanded={keyboardList}
+              aria-expanded={results.length > 0}
               aria-controls="results"
               aria-activedescendant={
-                keyboardList && results[selected]
-                  ? `result-${selected}`
-                  : undefined
+                results[selected] ? `result-${selected}` : undefined
               }
               placeholder={scope ? `Search ${scope}…` : "Search actions…"}
               value={query}
@@ -438,11 +379,6 @@ function App({
               }}
               onKeyDown={(e) => {
                 if (e.key === "ArrowDown" || e.key === "ArrowUp") {
-                  if (!keyboardList && results[0]) {
-                    e.preventDefault();
-                    document.getElementById("result-0")?.focus();
-                    return;
-                  }
                   e.preventDefault();
                   setSelected((index) =>
                     results.length
@@ -453,7 +389,7 @@ function App({
                       : 0,
                   );
                 }
-                if (e.key === "Enter" && keyboardList && results[selected]) {
+                if (e.key === "Enter" && results[selected]) {
                   e.preventDefault();
                   void activate(results[selected]);
                 }
@@ -468,140 +404,36 @@ function App({
             {mode === "popup" && (
               <button
                 onClick={() => {
-                  void openOptions(pages[0]).catch(fail);
+                  void openOptions(defaultOptionsPage).catch(fail);
                 }}
               >
                 Options
               </button>
             )}
           </header>
-          <div className={browse ? "popup-layout" : "palette-layout"}>
-            {browse && (
-              <nav aria-label="Action categories" className="navigation">
-                {["Favorites", "All actions", ...categories].map((name) => (
+          <main className="palette-layout">
+            <div className="action-pane">
+              <div id="results" role="listbox" aria-label="Available actions">
+                {results.map((r, index) => (
                   <button
-                    key={name}
-                    aria-current={name === activeSection ? "page" : undefined}
+                    key={r.id}
+                    id={`result-${index}`}
+                    role="option"
+                    aria-selected={selected === index}
+                    disabled={busy}
+                    className={`shortcut-item result ${selected === index ? "selected" : ""}`}
                     onClick={() => {
-                      setSection(name);
-                      setQuery("");
-                      setScope("");
+                      void activate(r);
                     }}
                   >
-                    {name}
+                    <span>{r.label}</span>
+                    {r.key && <kbd>{r.key}</kbd>}
                   </button>
                 ))}
-              </nav>
-            )}
-            <main
-              className="action-pane"
-              key={browse ? activeSection : "palette"}
-            >
-              {browse && (
-                <h1>
-                  {scope
-                    ? `Find ${scope}`
-                    : query
-                      ? "Search results"
-                      : activeSection}
-                </h1>
-              )}
-              <div
-                id="results"
-                role={keyboardList ? "listbox" : undefined}
-                aria-label="Available actions"
-              >
-                {groups.map((group) => (
-                  <section
-                    key={group}
-                    role={keyboardList ? "presentation" : undefined}
-                  >
-                    {group && <h2>{group}</h2>}
-                    {results
-                      .filter((r) => !group || workflow(r) === group)
-                      .map((r) => {
-                        const index = results.indexOf(r);
-                        return (
-                          <div
-                            className="action-row"
-                            key={r.id}
-                            role={keyboardList ? "presentation" : undefined}
-                          >
-                            <button
-                              id={`result-${index}`}
-                              role={keyboardList ? "option" : undefined}
-                              aria-selected={
-                                keyboardList ? selected === index : undefined
-                              }
-                              disabled={busy}
-                              className={`shortcut-item result ${keyboardList && selected === index ? "selected" : ""}`}
-                              onClick={() => {
-                                void activate(r);
-                              }}
-                            >
-                              <span>{r.label}</span>
-                              {r.key && <kbd>{r.key}</kbd>}
-                            </button>
-                            {!keyboardList && r.setting && RowMenu && (
-                              <RowMenu
-                                label={r.label}
-                                pinned={prefs.pins.includes(r.id)}
-                                togglePin={() => {
-                                  void save(
-                                    "pins",
-                                    prefs.pins.includes(r.id)
-                                      ? prefs.pins.filter((id) => id !== r.id)
-                                      : [...prefs.pins, r.id],
-                                  );
-                                }}
-                                settings={() => {
-                                  void openOptions(r.setting ?? pages[0]).catch(
-                                    fail,
-                                  );
-                                }}
-                              />
-                            )}
-                          </div>
-                        );
-                      })}
-                  </section>
-                ))}
               </div>
-              {!results.length &&
-                (finding || activeSection === "Favorites") && (
-                  <p className="muted">
-                    {finding
-                      ? "No matching actions."
-                      : "No favorites yet. Add actions from All actions."}
-                  </p>
-                )}
-              {browse && !finding && activeSection === "Web tools" && (
-                <button
-                  className="feature-link"
-                  onClick={() => {
-                    void openOptions(featureRoutes.RDP[1]).catch(fail);
-                  }}
-                >
-                  RDP download helper settings
-                </button>
-              )}
-              {browse &&
-                !finding &&
-                activeSection === "Media" &&
-                (playlist && current.id !== undefined ? (
-                  <PlaylistDurationCard
-                    key={`${current.id}:${playlist.page}:${playlist.list}`}
-                    target={playlist}
-                    tabId={current.id}
-                    openPlaylist={port.open}
-                  />
-                ) : (
-                  <p className="muted">
-                    Open a YouTube playlist to see its duration here.
-                  </p>
-                ))}
-            </main>
-          </div>
+              {!results.length && <p className="muted">No matching actions.</p>}
+            </div>
+          </main>
         </>
       )}
     </div>
@@ -610,31 +442,17 @@ function App({
 
 export function mountWorkspace({
   mode,
-  palette = false,
   Settings,
-  RowMenu,
 }: {
   mode: "popup" | "options" | "launcher";
-  palette?: boolean;
   Settings?: ComponentType<OptionsProps>;
-  RowMenu?: typeof ActionMenu;
 }) {
   const port = workspaceBrowser();
   const container = document.getElementById("app");
   if (!container) throw Error("Missing app container");
-  document.body.classList.add(
-    mode === "popup" && palette ? "toolbar-palette" : mode,
-  );
+  document.body.classList.add(mode === "popup" ? "toolbar-palette" : mode);
   const root = createRoot(container);
-  root.render(
-    <App
-      port={port}
-      mode={mode}
-      initialPalette={palette}
-      Settings={Settings}
-      RowMenu={RowMenu}
-    />,
-  );
+  root.render(<App port={port} mode={mode} Settings={Settings} />);
   window.addEventListener(
     "pagehide",
     () => {

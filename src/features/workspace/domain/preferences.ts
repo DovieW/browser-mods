@@ -2,6 +2,12 @@ import {
   parseScreenshotLabel,
   screenshotLabelDefaults,
 } from "../../../core/clipboard/screenshot-label";
+import { commands } from "../../../core/actions/catalog";
+
+export const popupTools = {
+  "playlist-duration": "YouTube playlist duration",
+  "rdp-tools": "RDP download helper",
+} as const;
 
 const sections = ["Tabs", "Clipboard", "Media"] as const;
 export type Section = (typeof sections)[number];
@@ -12,6 +18,7 @@ export const preferenceDefaults = {
   includeDisabled: false,
   ...screenshotLabelDefaults,
   pins: ["copy-url", "copy-screenshot", "switch-to-last-tab", "pause-all-tabs"],
+  popupItems: [] as string[],
   hidden: [] as string[],
   order: [] as string[],
   sections: [...sections] as string[],
@@ -45,6 +52,7 @@ export function parsePreferences(value: unknown): Preferences {
   Object.assign(p, parseScreenshotLabel(value));
   for (const key of [
     "pins",
+    "popupItems",
     "hidden",
     "order",
     "sections",
@@ -57,7 +65,12 @@ export function parsePreferences(value: unknown): Preferences {
         v.length <= 200 &&
         v.every((x: unknown) => typeof x === "string" && x.length <= 100)
       )
-        p[key] = [...new Set(v as string[])];
+        p[key] = [...new Set(v as string[])].filter(
+          (id) =>
+            key !== "popupItems" ||
+            Object.hasOwn(popupTools, id) ||
+            (id !== "open-palette" && Object.hasOwn(commands, id)),
+        );
     }
   }
   return p;
@@ -75,7 +88,7 @@ export function validatePreferences(value: unknown): boolean {
   return (
     Object.keys(normalized).every(
       (k) =>
-        (Object.hasOwn(screenshotLabelDefaults, k) &&
+        ((k === "popupItems" || Object.hasOwn(screenshotLabelDefaults, k)) &&
           !Object.hasOwn(value, k)) ||
         (Object.hasOwn(value, k) &&
           JSON.stringify(Reflect.get(value, k)) ===

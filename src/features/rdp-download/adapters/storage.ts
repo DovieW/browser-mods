@@ -1,6 +1,8 @@
 import {
   preferenceKey,
   microsoftAccountOrigin,
+  isMicrosoftSignIn,
+  portalAddress,
   readPreferences,
   runPrefix,
   type Portal,
@@ -63,6 +65,23 @@ export async function readRdpRun(tabId: number) {
   const key = `${runPrefix}${tabId}`;
   return (await chrome.storage.session.get(key))[key] as
     import("../domain/portal").Run | undefined;
+}
+
+export async function hasRdpToolbarTool(tab: {
+  id: number | undefined;
+  url: string;
+}) {
+  const url = portalAddress(tab.url);
+  if (!url) return false;
+  const { portal, policyOrigin } = await loadRdpPreferences();
+  if (url.origin === portal?.origin || url.origin === policyOrigin) return true;
+  if (url.pathname === "/vdesk/webtop.eui" || url.pathname === "/my.policy")
+    return true;
+  return (
+    tab.id !== undefined &&
+    isMicrosoftSignIn(url) &&
+    (await readRdpRun(tab.id))?.phase === "waiting"
+  );
 }
 
 export async function setNativeAutofill(enabled: boolean) {

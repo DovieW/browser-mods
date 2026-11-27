@@ -8,13 +8,13 @@ Keyboard shortcuts for tabs, groups, windows, navigation, and media. Requires Ch
 
 This repository is being migrated into a unified browser toolkit. The existing runtime has been extracted into typed modules with tested architecture boundaries and a shared theme; other utility extensions have not yet been integrated. Their existing installations remain the working versions.
 
-Run `npm ci` and `npm run verify`, then use `npm run dev` to load the unpacked build into a dedicated development browser. The popup opens to Favorites, with All actions and workflow categories in the left rail. On a YouTube playlist, open **Media** to see the duration. Use `npm run test:browser:packaged` for disposable-profile regression checks. See [Development workflow](docs/development.md) and [UI interaction](docs/ui-interaction.md).
+Run `npm ci` and `npm run verify`, then use `npm run dev` to load the unpacked build into a dedicated development browser. Choose toolbar items in **Options → Appearance & controls → Toolbar popup**. Add **YouTube playlist duration** to show it when you open the popup on a playlist. Use the separate command palette to search all actions. Use `npm run test:browser:packaged` for disposable-profile regression checks. See [Development workflow](docs/development.md) and [UI interaction](docs/ui-interaction.md).
 
 See [architecture](docs/architecture.md), [feature admission and performance policy](docs/feature-admission.md), and [migration status](docs/migration.md). The shared standards repository is https://github.com/DovieW/dovies-mods-shared.
 
 ## Setup
 
-Open **Options → Shortcuts → Edit in Chrome**, or visit `chrome://extensions/shortcuts`, to assign keys. **Assignment history & recovery** shows differences from your saved setup. Assign **Open Browser Mods command palette** separately, then choose its placement in **Options → Appearance & controls**.
+Open **Options → Shortcuts → Keyboard shortcuts → Edit in Chrome**, or visit `chrome://extensions/shortcuts`, to assign keys. **Assignment history** shows differences from your saved setup. Assign **Open Browser Mods command palette** separately, then choose its placement in **Options → Appearance & controls → Command palette**.
 
 This README describes the current source. See [the changelog](CHANGELOG.md) for released and unreleased changes. To install a [GitHub release](https://github.com/DovieW/browser-mods/releases), extract its extension ZIP, enable **Developer mode** at `chrome://extensions`, choose **Load unpacked**, and select the extracted directory. Keep that directory at the same path when updating to preserve the unpacked extension ID and its settings. An unpacked copy can have different shortcut assignments from the installed Web Store version. GitHub releases and Chrome Web Store publication are separate.
 
@@ -183,4 +183,4 @@ Run `npm run package` to create `/tmp/simple-shortcuts-release-<version>/simple-
 
 To verify the extracted ZIP instead of the source directory, run `SHORTCUTS_TEST_EXTENSION=/path/to/extracted npm run test:browser`. Test fixtures still use disposable profiles and local pages.
 
-Store listing text, permission explanations, and manual submission instructions are in [store-assets/UPLOAD.md](store-assets/UPLOAD.md). Run `node scripts/render-store-assets.cjs` to generate the icon, screenshots, and promotional tiles in `/tmp/simple-shortcuts-store-<version>`. The screenshots use the real popup in a disposable fixture profile. See [the privacy policy](PRIVACY.md) for data handling details.
+Store listing text, permission explanations, and manual submission instructions are in [store-assets/UPLOAD.md](store-assets/UPLOAD.md). Run `node scripts/render-store-assets.cjs` to generate the icon, screenshots, and promotional tiles in `/tmp/simple-shortcuts-store-<version>`. The screenshots use the shortcut maintenance view in a disposable fixture profile. See [the privacy policy](PRIVACY.md) for data handling details.

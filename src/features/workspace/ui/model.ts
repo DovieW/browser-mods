@@ -9,14 +9,6 @@ export type Result = {
   stay?: boolean;
 };
 
-export const pages = [
-  "Features",
-  "Shortcuts",
-  "Appearance & controls",
-  "Site access",
-  "Sync & backup",
-] as const;
-
 export const workflows = [
   "Tabs & windows",
   "Bookmarks & reading",
@@ -32,6 +24,19 @@ export const featureRoutes = {
   RDP: ["Web tools", "RDP download helper"],
 } as const;
 
+export const optionsSections = {
+  Features: Object.values(featureRoutes).map(([, page]) => page),
+  Shortcuts: ["Keyboard shortcuts", "Assignment history"],
+  "Appearance & controls": ["Toolbar popup", "Command palette"],
+  "Site access": [],
+  "Sync & backup": ["Interface backup", "Shortcut backup"],
+} as const;
+export const defaultOptionsPage = featureRoutes.Tabs[1];
+
+export function optionsHash(page: string, control = "") {
+  return "#" + encodeURIComponent(page + (control ? "|" + control : ""));
+}
+
 export function workflow(action: Result) {
   if (action.id === "go-home") return "Web tools";
   if (action.group === "Clipboard") return "Clipboard & capture";
@@ -43,32 +48,37 @@ export function workflow(action: Result) {
 export const settings = [
   {
     label: "Command palette location",
-    page: "Appearance & controls",
+    page: "Command palette",
     control: "placement",
   },
   {
     label: "Palette search mode",
-    page: "Appearance & controls",
+    page: "Command palette",
     control: "searchMode",
   },
   {
     label: "Show disabled features in search",
-    page: "Appearance & controls",
+    page: "Command palette",
     control: "includeDisabled",
   },
   {
-    label: "Pinned actions and ordering",
-    page: "Appearance & controls",
+    label: "Command palette action visibility and ordering",
+    page: "Command palette",
     control: "action-order",
   },
   {
+    label: "Choose and reorder toolbar popup items",
+    page: "Toolbar popup",
+    control: "popup-items",
+  },
+  {
     label: "Keyboard shortcuts",
-    page: "Shortcuts",
+    page: "Keyboard shortcuts",
     control: "shortcut-settings",
   },
   {
     label: "Shortcut assignment history and recovery",
-    page: "Shortcuts",
+    page: "Assignment history",
     control: "shortcut-history",
   },
   {
@@ -102,7 +112,7 @@ export const settings = [
   },
   {
     label: "Enable or disable features",
-    page: "Features",
+    page: "Tab switching",
     control: "mod-settings",
   },
   {
@@ -112,8 +122,13 @@ export const settings = [
   },
   {
     label: "Sync, import and export",
-    page: "Sync & backup",
+    page: "Interface backup",
     control: "backup-settings",
+  },
+  {
+    label: "Shortcut backup and recovery",
+    page: "Shortcut backup",
+    control: "shortcut-backup",
   },
 ];
 
@@ -123,15 +138,29 @@ export function optionsRoute(hash: string) {
   try {
     [target = "", control = ""] = decodeURIComponent(hash.slice(1)).split("|");
   } catch {
-    return { page: pages[0], control };
+    return { page: defaultOptionsPage, control };
   }
   if (target === "Mods")
     target = control.startsWith("screenshot") ? "Screenshots" : "Features";
   if (target === "Appearance & navigation") target = "Appearance & controls";
   if (target === "Appearance & controls" && control === "layout")
     control = "action-order";
-  const valid =
-    pages.some((page) => page === target) ||
-    Object.values(featureRoutes).some(([, page]) => page === target);
-  return { page: valid ? target : pages[0], control };
+  if (target === "Appearance & controls")
+    target = control === "popup-items" ? "Toolbar popup" : "Command palette";
+  if (target === "Shortcuts")
+    target =
+      control === "shortcut-history"
+        ? "Assignment history"
+        : "Keyboard shortcuts";
+  if (target === "Sync & backup") target = "Interface backup";
+  if (target === "Features") target = defaultOptionsPage;
+  const valid = Object.entries(optionsSections).some(
+    ([section, children]) =>
+      (section === target && !children.length) ||
+      children.some((page) => page === target),
+  );
+  return {
+    page: valid ? target : defaultOptionsPage,
+    control: valid ? control : "",
+  };
 }

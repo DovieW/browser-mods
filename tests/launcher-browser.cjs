@@ -46,7 +46,7 @@ const assert = require("node:assert/strict");
     const id = new URL(worker.url()).host;
     const controls = await context.newPage();
     await controls.goto(`chrome-extension://${id}/popup.html`);
-    await controls.locator(".result").first().waitFor();
+    await controls.getByRole("button", { name: "Customize popup" }).waitFor();
     await worker.evaluate(() =>
       chrome.storage.sync.set({ "mods.ui.v1.placement": "centered" }),
     );

@@ -73,4 +73,7 @@ kbd { white-space: nowrap; font: 11px ui-monospace, monospace; border: 1px solid
 
 .icon-button:has(.button-label) { width: auto; gap: 5px; padding: 5px 6px; }
 .icon-button:has(.button-label) svg { width: 15px; height: 15px; }
+
+body.backup-pane { width: auto; height: auto; min-height: 0; padding: 4px; }
+.backup-pane > header, .backup-pane #openSettings, .backup-pane #moreTools { display: none; }
 .button-label { font-size: 11px; white-space: nowrap; }

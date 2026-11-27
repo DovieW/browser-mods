@@ -82,13 +82,18 @@ function video(duration, id = "one", list = "PL-fixture") {
       } else
         await route.fulfill({ contentType: "text/html", body: "No playlist" });
     });
+    await worker.evaluate(() =>
+      chrome.storage.sync.set({
+        "mods.ui.v1.popupItems": ["playlist-duration"],
+      }),
+    );
     const page = await context.newPage();
     const popup = await context.newPage();
     async function show(url) {
       await page.goto(url);
       await page.bringToFront();
       await popup.goto(`chrome-extension://${id}/popup.html`);
-      await popup.getByRole("button", { name: "Media", exact: true }).click();
+      await popup.getByRole("main", { name: "Toolbar popup items" }).waitFor();
     }
     await show(playlistUrl);
     const card = popup.getByRole("region", {
@@ -122,7 +127,7 @@ function video(duration, id = "one", list = "PL-fixture") {
     );
     assert.match(await card.innerText(), /Subtotal/);
     await show("https://www.youtube.com/watch?v=standalone");
-    await popup.locator(".result").first().waitFor();
+    await popup.getByRole("button", { name: "Customize popup" }).waitFor();
     assert.equal(await card.count(), 0);
     console.log(
       "PASS playlist totals, duplicate entries, lazy loading, scroll restoration, watch sidebar and missing durations",

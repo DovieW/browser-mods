@@ -23,10 +23,26 @@ test("UI preferences reject invalid enums and bound untrusted arrays", () => {
   assert.equal(c.validatePreferences({ layout: "favorites" }), false);
   assert.equal(c.validatePreferences(c.parsePreferences(null)), true);
   const olderBackup = c.parsePreferences(null);
+  delete olderBackup.popupItems;
   for (const key of Object.keys(olderBackup))
     if (key.startsWith("screenshotLabel")) delete olderBackup[key];
   olderBackup.showScreenshotUrl = false;
   assert.equal(c.validatePreferences(olderBackup), true);
+  assert.deepEqual(Array.from(c.parsePreferences(olderBackup).popupItems), []);
+  assert.deepEqual(
+    Array.from(
+      c.parsePreferences({
+        popupItems: [
+          "rdp-tools",
+          "copy-url",
+          "rdp-tools",
+          "unknown",
+          "open-palette",
+        ],
+      }).popupItems,
+    ),
+    ["rdp-tools", "copy-url"],
+  );
   assert.equal(
     c.parsePreferences(olderBackup).screenshotLabelCorner,
     "bottom-right",

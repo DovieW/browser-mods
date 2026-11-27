@@ -30,6 +30,16 @@ const quantile = (values, p) =>
       (await context.waitForEvent("serviceworker", { timeout: 10000 }));
     const id = new URL(worker.url()).host;
     const browserStart = performance.now() - started;
+    await worker.evaluate(() =>
+      chrome.storage.sync.set({
+        "mods.ui.v1.popupItems": [
+          "copy-url",
+          "copy-screenshot",
+          "switch-to-last-tab",
+          "pause-all-tabs",
+        ],
+      }),
+    );
     for (let i = 0; i < 15; i++) {
       const page = await context.newPage();
       const errors = [];
