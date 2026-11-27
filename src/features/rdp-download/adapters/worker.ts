@@ -117,13 +117,19 @@ export function registerRdpHelper() {
         (await chrome.windows.get(tab.windowId)).focused
       );
     };
-    if (!(await documentMatches())) return;
     const run = await readRdpRun(id);
     if (run?.phase !== "waiting") return;
     const attempted = run.microsoftShortcuts ?? [];
+    const status = (microsoftStatus: NonNullable<Run["microsoftStatus"]>) =>
+      write(id, { ...run, microsoftShortcuts: attempted, microsoftStatus });
+    if (!(await documentMatches())) {
+      await status("waiting-for-focus");
+      return;
+    }
     const stages: MicrosoftStage[] = ["username", "password"];
     const remaining = stages.filter((stage) => !attempted.includes(stage));
     while (remaining.length) {
+      await status("looking-for-form");
       const detected = await result(id, microsoftForm, [
         url,
         account,
@@ -138,9 +144,12 @@ export function registerRdpHelper() {
         [url, account, [stage], "focus"],
         detected.documentId,
       );
-      if (!focus?.result || !(await documentMatches())) return;
+      if (!focus?.result || !(await documentMatches())) {
+        await status("waiting-for-focus");
+        return;
+      }
       attempted.push(stage);
-      await write(id, { ...run, microsoftShortcuts: attempted });
+      await status("sending-shortcut");
       if (!(await documentMatches())) return;
       const reply: unknown = await chrome.runtime
         .sendNativeMessage(nativeHost, { action: "bitwarden-autofill" })
@@ -150,22 +159,30 @@ export function registerRdpHelper() {
         typeof reply !== "object" ||
         !("ok" in reply) ||
         reply.ok !== true
-      )
+      ) {
+        await status("helper-failed");
         return;
+      }
+      await status("waiting-for-fill");
       const filled = await result(
         id,
         microsoftForm,
         [url, account, [stage], "wait"],
         detected.documentId,
       );
-      if (!filled?.result || !(await documentMatches())) return;
-      const submitted = await result(
+      if (!filled?.result || !(await documentMatches())) {
+        await status("no-fill");
+        return;
+      }
+      await status("submitting");
+      await result(
         id,
         microsoftForm,
         [url, account, [stage], "submit"],
         detected.documentId,
       );
-      if (!submitted?.result || stage === "password") return;
+      // Microsoft can replace the sign-in form before Chrome returns the script result.
+      if (stage === "password") return;
       remaining.splice(remaining.indexOf(stage), 1);
       if (!remaining.length || !(await documentMatches())) return;
     }

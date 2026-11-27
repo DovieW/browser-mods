@@ -281,6 +281,18 @@ const launch = "/f5vdi/rdp/launch/Common/test-desktop";
             },
           },
         });
+        const executeScript = chrome.scripting.executeScript.bind(
+          chrome.scripting,
+        );
+        chrome.scripting.executeScript = async (injection) => {
+          const results = await executeScript(injection);
+          if (
+            injection.args?.[3] === "submit" &&
+            injection.args[2]?.[0] === "username"
+          )
+            return [];
+          return results;
+        };
         chrome.runtime.sendNativeMessage = async (host, message) => {
           if (
             host !== "com.doview.browser_mods" ||
@@ -334,6 +346,16 @@ const launch = "/f5vdi/rdp/launch/Common/test-desktop";
       "2",
     );
     assert.equal(await helper.locator('input[name="otp"]').inputValue(), "");
+    const signInTrace = await worker.evaluate(async (host) => {
+      const tabs = await chrome.tabs.query({ url: host + "/fixture/saml2" });
+      const key = "mods.rdp.run." + tabs[0].id;
+      const run = (await chrome.storage.session.get(key))[key];
+      return { status: run.microsoftStatus, stages: run.microsoftShortcuts };
+    }, microsoft);
+    assert.deepEqual(signInTrace, {
+      status: "submitting",
+      stages: ["username", "password"],
+    });
     await worker.evaluate(
       ({ key, origin }) =>
         chrome.storage.local.set({

@@ -14,6 +14,14 @@ export type Run = {
   started?: number;
   f5Submitted?: boolean;
   microsoftShortcuts?: ("username" | "password")[];
+  microsoftStatus?:
+    | "looking-for-form"
+    | "waiting-for-focus"
+    | "sending-shortcut"
+    | "helper-failed"
+    | "waiting-for-fill"
+    | "no-fill"
+    | "submitting";
 };
 export type Preferences = {
   enabled: boolean;

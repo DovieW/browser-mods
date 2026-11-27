@@ -16,6 +16,17 @@ import {
   type Run,
 } from "../domain/portal";
 
+const microsoftStatusText = {
+  "looking-for-form": "Waiting for a recognized Microsoft sign-in form.",
+  "waiting-for-focus": "Return to the Microsoft sign-in tab to continue.",
+  "sending-shortcut": "Sending Ctrl+Shift+P to Bitwarden.",
+  "helper-failed": "The desktop helper could not send Ctrl+Shift+P.",
+  "waiting-for-fill": "Shortcut sent. Waiting for Bitwarden to fill the form.",
+  "no-fill": "Browser Mods did not see Bitwarden fill the Microsoft form.",
+  submitting:
+    "Submitting the filled Microsoft form. Complete verification when prompted.",
+} satisfies Record<NonNullable<Run["microsoftStatus"]>, string>;
+
 export function RdpCard({
   url,
   tabId,
@@ -118,9 +129,10 @@ export function RdpCard({
           </label>
         )}
       {prefs?.enabled && microsoft && (
-        <p>
-          Press Ctrl+Shift+P on the Microsoft username and password screens to
-          fill with Bitwarden. Complete verification to continue.
+        <p role="status">
+          {prefs.nativeAutofill && run.microsoftStatus
+            ? microsoftStatusText[run.microsoftStatus]
+            : "Press Ctrl+Shift+P to fill the Microsoft form with Bitwarden. Complete verification to continue."}
         </p>
       )}
       {prefs?.enabled && prefs.portal?.account && (
