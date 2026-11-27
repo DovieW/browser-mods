@@ -41,6 +41,12 @@ Bound total pixels, temporary blobs and composition memory; use tiled/paginated 
 
 Sources: [tabs/capture limits](https://developer.chrome.com/docs/extensions/reference/api/tabs), [debugger](https://developer.chrome.com/docs/extensions/reference/api/debugger), [CDP Page](https://chromedevtools.github.io/devtools-protocol/tot/Page/).
 
+### Capture both panes of Chrome Split View
+
+The Copy highlighted tab URLs shortcut includes both panes of the active split in tab-strip order. It uses the existing tab metadata and leaves explicit multi-tab selections available.
+
+For screenshots, the desired output is one PNG with the panes in their visible order and a divider. When URL stamping is on, put each pane's own URL in its lower-right corner. Chrome's `captureVisibleTab` gives the extension the active pane's surface. A combined capture needs a separate capture path. Evaluate whether both panes can be captured with narrow, user-initiated access before changing the instant shortcut. Preserve the focused pane and refuse a combined image if either pane changes during capture. [Chrome Split View API](https://developer.chrome.com/blog/split-view-api-extensions) · [Chrome screenshot API](https://developer.chrome.com/docs/extensions/reference/api/tabs#method-captureVisibleTab)
+
 ### Attach a screenshot to the last ChatGPT chat
 
 **Proposed follow-up.** Add a separate, assignable shortcut that captures the visible page using the same PNG and optional URL label as **Copy screenshot**. Capture the source before switching tabs. Attach one image to the draft in the most recently interacted-with ChatGPT conversation, then bring that tab forward. Preserve any draft text or attachments. Leave message submission to the user.

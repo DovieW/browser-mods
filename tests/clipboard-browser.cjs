@@ -65,6 +65,7 @@ const { execFileSync } = require("node:child_process");
         args: [
           `--disable-extensions-except=${extension}`,
           `--load-extension=${extension}`,
+          "--enable-features=ApiTabsSplitView,SideBySide",
           ...(native ? ["--ozone-platform=x11"] : []),
         ],
       },
@@ -317,6 +318,25 @@ const { execFileSync } = require("node:child_process");
     console.log(
       "PASS worker failures retain a safe reason and show an actionable popup message",
     );
+    const splitPartner = await worker.evaluate(async (source) => {
+      if (!chrome.tabs.createSplit) return undefined;
+      await chrome.windows.update(source.windowId, { focused: true });
+      await chrome.tabs.update(source.id, { active: true });
+      const tabs = await chrome.tabs.query({ windowId: source.windowId });
+      const right = tabs.find((tab) => tab.index === source.index + 1);
+      await chrome.tabs.createSplit([source.id, right.id]);
+      await chrome.tabs.update(right.id, { active: true });
+      return right.id;
+    }, source);
+    if (splitPartner !== undefined) {
+      await run("copy-url");
+      await page.bringToFront();
+      assert.equal(
+        (await paste()).text,
+        [base + "/one", base + "/two"].join("\n"),
+      );
+      console.log("PASS both native split-view URLs paste in tab-strip order");
+    }
     console.log(`Clipboard artifacts: ${root}`);
   } finally {
     if (context) await context.close();

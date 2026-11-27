@@ -782,6 +782,27 @@ test("missing selected URL leaves the clipboard untouched", async () => {
   );
 });
 
+test("copy links includes both active split panes once in tab-strip order", async () => {
+  const h = createHarness({
+    tabs: [
+      { id: 1, splitViewId: 10, url: "https://left.test/" },
+      { id: 2, active: true, splitViewId: 10, url: "https://right.test/" },
+      { id: 3, splitViewId: 11, url: "https://other-split.test/" },
+      {
+        id: 4,
+        highlighted: true,
+        splitViewId: -1,
+        url: "https://selected.test/",
+      },
+    ],
+  });
+  await h.run("copy-url");
+  assert.equal(
+    h.calls.find((call) => call[0] === "message")[1].text,
+    "https://left.test/\nhttps://right.test/\nhttps://selected.test/",
+  );
+});
+
 test("screenshot captures the active tab once and sends PNG without storing image data", async () => {
   const h = createHarness();
   await h.run("copy-screenshot");

@@ -49,11 +49,18 @@ export function createClipboard(
   }
 
   async function copyUrls(context: CommandContext) {
-    const selected = context.selected.length
+    let selected = context.selected.length
       ? context.selected
       : context.active
         ? [context.active]
         : [];
+    const splitId = context.active?.splitViewId;
+    if (splitId !== undefined && splitId >= 0) {
+      const selectedIds = new Set(selected.map((tab) => tab.id));
+      selected = context.tabs.filter(
+        (tab) => tab.splitViewId === splitId || selectedIds.has(tab.id),
+      );
+    }
     if (!selected.length) throw commandError("no_tab");
     if (selected.some((tab) => !tab.url)) throw commandError("no_url");
     await writeClipboard("copy-url", {
