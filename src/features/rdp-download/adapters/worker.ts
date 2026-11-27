@@ -229,6 +229,13 @@ export function registerRdpHelper() {
     }
   }
 
+  async function restartAtPortalHome(portal: Portal, id: number, url: string) {
+    if (!(await stillEnabled(portal, id, url))) return;
+    await write(id, { phase: "waiting" });
+    if (await stillEnabled(portal, id, url))
+      await chrome.tabs.update(id, { url: portal.origin + "/" });
+  }
+
   async function recoverLaunchError(portal: Portal, id: number, url: string) {
     const denied = await chrome.scripting
       .executeScript({
@@ -246,12 +253,7 @@ export function registerRdpHelper() {
           error instanceof Error && /is showing error page/i.test(error.message)
         );
       });
-    if (!denied || !(await stillEnabled(portal, id, url))) return;
-    await write(id, { phase: "waiting" });
-    if (!(await stillEnabled(portal, id, url))) return;
-    const tab = await chrome.tabs.get(id);
-    if (tab.url === url && !tab.pendingUrl)
-      await chrome.tabs.update(id, { url: portal.origin + "/" });
+    if (denied) await restartAtPortalHome(portal, id, url);
   }
 
   async function handlePage(id: number, url: string) {
@@ -344,18 +346,14 @@ export function registerRdpHelper() {
     if (!(await permitted(portal))) return;
 
     const previous = await readRdpRun(id);
-    if (address.pathname === "/vdesk/hangup.php3") {
+    if (
+      address.pathname === "/vdesk/hangup.php3" ||
+      (address.pathname === "/my.logout.php3" &&
+        address.searchParams.get("errorcode") === "22")
+    ) {
       const page = await result(id, inspectPortal, [portal, url, "inspect"]);
-      if (page?.result !== "signed-out") return;
-      if (!(await stillEnabled(portal, id, url))) return;
-      await write(id, { phase: "waiting" });
-      if (await stillEnabled(portal, id, url))
-        await result(
-          id,
-          inspectPortal,
-          [portal, url, "restart"],
-          page.documentId,
-        );
+      if (page?.result === "reset-needed")
+        await restartAtPortalHome(portal, id, url);
       return;
     }
     if (

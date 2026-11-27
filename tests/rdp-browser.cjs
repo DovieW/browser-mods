@@ -96,8 +96,9 @@ const launch = "/f5vdi/rdp/launch/Common/test-desktop";
         });
       }
       const pages = {
-        "/vdesk/hangup.php3":
-          '<h1>Your session is finished.</h1><a href="/">click here.</a>',
+        "/vdesk/hangup.php3": "<h1>Your session is finished.</h1>",
+        "/my.logout.php3": `<h1>Your session could not be established.</h1>
+          <p>${search.includes("unexpected") ? "Access denied." : "Access policy configuration has changed on gateway. Please login again to comply with new access policy configuration."}</p>`,
         "/my.policy": `<p>${search === "?different" ? "Updated policy" : "For authorized users only. Your activities may be monitored. You consent to such monitoring."}</p>
           <a href="/accept">I Accept</a><a href="/">I Don't Accept</a>`,
         [webtop]:
@@ -257,6 +258,25 @@ const launch = "/f5vdi/rdp/launch/Common/test-desktop";
     assert.equal(await (await reauthenticated).failure(), null);
     assert.equal(requests, 2);
     await denied.close();
+
+    const policyChanged = await context.newPage();
+    await popup.bringToFront();
+    await policyChanged.goto(portal + "/my.logout.php3?errorcode=22");
+    await policyChanged
+      .getByText("Your session could not be established.")
+      .waitFor();
+    assert.equal(restarts, 5);
+    await policyChanged.bringToFront();
+    await policyChanged.waitForURL(portal + "/my.policy", { timeout: 5000 });
+    assert.equal(restarts, 6);
+    for (const search of ["?errorcode=23", "?errorcode=22&unexpected"]) {
+      await policyChanged.goto(portal + "/my.logout.php3" + search);
+      await policyChanged
+        .getByText("Your session could not be established.")
+        .waitFor();
+      assert.equal(restarts, 6);
+    }
+    await policyChanged.close();
     await worker.evaluate(
       async ({ key, origin, pathname }) => {
         await chrome.storage.local.set({

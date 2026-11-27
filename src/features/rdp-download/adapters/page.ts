@@ -219,7 +219,7 @@ export function submitFilledF5(expectedUrl: string, action: "wait" | "submit") {
 export async function inspectPortal(
   portal: Portal,
   expectedUrl: string,
-  action: "inspect" | "download" | "restart",
+  action: "inspect" | "download",
 ) {
   if (location.href !== expectedUrl || location.origin !== portal.origin)
     return "unknown" as const;
@@ -232,35 +232,19 @@ export async function inspectPortal(
     getComputedStyle(element).visibility === "visible" &&
     !element.matches('[disabled], [aria-disabled="true"]');
 
-  const restartLink = () => {
-    if (location.pathname !== "/vdesk/hangup.php3") return null;
-    const text = document.body.innerText;
-    if (!/your session is finished|logged out successfully/i.test(text))
-      return null;
-    const links = Array.from(
-      document.querySelectorAll<HTMLAnchorElement>("a[href]"),
-    ).filter((link) => {
-      const target = URL.parse(link.href);
-      return (
-        target?.origin === portal.origin &&
-        ["/", "/my.policy"].includes(target.pathname) &&
-        !target.search &&
-        !target.hash &&
-        visible(link) &&
-        /^click here\.?$/i.test(normalize(link.innerText))
-      );
-    });
-    return links.length === 1 ? links[0] : null;
-  };
-
-  if (
-    action === "restart" ||
-    (action === "inspect" && location.pathname === "/vdesk/hangup.php3")
-  ) {
-    const link = restartLink();
-    if (!link) return "unknown" as const;
-    if (action === "restart") link.click();
-    return "signed-out" as const;
+  if (action === "inspect") {
+    if (location.pathname === "/vdesk/hangup.php3")
+      return /your session is finished|logged out successfully/i.test(
+        normalize(document.body.innerText),
+      )
+        ? ("reset-needed" as const)
+        : ("unknown" as const);
+    if (location.pathname === "/my.logout.php3")
+      return /access policy configuration has changed on gateway/i.test(
+        normalize(document.body.innerText),
+      )
+        ? ("reset-needed" as const)
+        : ("unknown" as const);
   }
 
   if (location.pathname !== portal.path) return "unknown" as const;
