@@ -42,15 +42,21 @@ const launch = "/f5vdi/rdp/launch/Common/test-desktop";
     let signIns = 0;
     await context.route(portal + "/**", async (route) => {
       const { pathname, search } = new URL(route.request().url());
+      const posted = route.request().method() === "POST";
+      if (pathname === "/my.policy" && search === "?cached" && posted)
+        return route.fulfill({
+          contentType: "text/html",
+          body: `<script>location.replace("${webtop}");</script>`,
+        });
       if (
         pathname === "/my.policy" &&
-        (search === "?autofill" || route.request().method() === "POST")
+        (search === "?autofill" || search === "?autofill-cached" || posted)
       ) {
         if (route.request().method() === "POST") signIns++;
         return route.fulfill({
           contentType: "text/html",
           body: `<h1>Secure Logon for F5 Networks</h1>
-            <form method="post" action="/my.policy">
+            <form method="post" action="/my.policy${search === "?autofill-cached" ? "?cached" : ""}">
               <label>Username <input name="username"></label>
               <label>Password <input type="password" name="password"></label>
               <input type="submit" value="Logon">
@@ -206,8 +212,13 @@ const launch = "/f5vdi/rdp/launch/Common/test-desktop";
     await recovery.getByRole("link", { name: "Logout" }).click();
     await recovery.waitForURL(portal + "/my.policy", { timeout: 5000 });
     assert.equal(restarts, 2);
+    await popup.bringToFront();
     await recovery.goto(portal + "/vdesk/hangup.php3");
     await recovery.getByText("Your session is finished.").waitFor();
+    assert.equal(restarts, 2);
+    await recovery.bringToFront();
+    await recovery.waitForURL(portal + "/my.policy", { timeout: 5000 });
+    assert.equal(restarts, 3);
     await recovery.close();
 
     const ambiguous = await context.newPage();
@@ -227,26 +238,25 @@ const launch = "/f5vdi/rdp/launch/Common/test-desktop";
     const denied = await context.newPage();
     await denied.goto(portal + launch + "?ok");
     assert.equal(await denied.locator("body").innerText(), "Unknown");
-    assert.equal(restarts, 2);
-    await denied.goto(portal + launch).catch((error) => {
-      if (!/ERR_HTTP_RESPONSE_CODE_FAILURE|interrupted/.test(String(error)))
-        throw error;
-    });
-    await denied.waitForURL(portal + "/my.policy", { timeout: 5000 });
     assert.equal(restarts, 3);
-    const deniedAgain = await denied.goto(portal + launch).catch((error) => {
-      if (!String(error).includes("ERR_HTTP_RESPONSE_CODE_FAILURE"))
-        throw error;
-    });
-    assert.equal(deniedAgain?.status() ?? 403, 403);
-    await denied.getByText("HTTP ERROR 403").waitFor();
-    assert.equal(restarts, 3);
-    await denied.goto(portal + "/my.policy");
+    for (const count of [4, 5]) {
+      const restarted = denied.waitForResponse(portal + "/", {
+        timeout: 5000,
+      });
+      await denied.goto(portal + launch).catch((error) => {
+        if (!/ERR_HTTP_RESPONSE_CODE_FAILURE|interrupted/.test(String(error)))
+          throw error;
+      });
+      await restarted;
+      await denied.waitForURL(portal + "/my.policy", { timeout: 5000 });
+      assert.equal(restarts, count);
+    }
     await denied.getByRole("link", { name: "I Accept" }).click();
     const reauthenticated = denied.waitForEvent("download", { timeout: 8000 });
     await denied.getByRole("link", { name: "Finish manual sign-in" }).click();
     assert.equal(await (await reauthenticated).failure(), null);
     assert.equal(requests, 2);
+    await denied.close();
     await worker.evaluate(
       async ({ key, origin, pathname }) => {
         await chrome.storage.local.set({
@@ -260,6 +270,16 @@ const launch = "/f5vdi/rdp/launch/Common/test-desktop";
       },
       { key: preferenceKey, origin: portal, pathname: webtop },
     );
+    const cached = await context.newPage();
+    await popup.bringToFront();
+    await cached.goto(portal + "/my.policy?autofill-cached");
+    await cached.getByText("Secure Logon for F5 Networks").waitFor();
+    assert.equal(requests, 2);
+    const cachedDownload = cached.waitForEvent("download", { timeout: 8000 });
+    await cached.bringToFront();
+    assert.equal(await (await cachedDownload).failure(), null);
+    assert.equal(requests, 3);
+    await cached.close();
     const filled = await context.newPage();
     await filled.goto(portal + "/my.policy?autofill");
     await filled.waitForURL(portal + "/my.policy", { timeout: 6_000 });
@@ -314,12 +334,17 @@ const launch = "/f5vdi/rdp/launch/Common/test-desktop";
               const field = document.activeElement;
               if (!["i0116", "i0118"].includes(field.id))
                 throw Error("Unexpected focus");
-              field.value =
-                field.id === "i0116" ? "work@example.test" : "fixture";
               document.body.dataset.nativeCalls = String(
                 Number(document.body.dataset.nativeCalls || 0) + 1,
               );
-              field.dispatchEvent(new Event("input", { bubbles: true }));
+              setTimeout(
+                () => {
+                  field.value =
+                    field.id === "i0116" ? "work@example.test" : "fixture";
+                  field.dispatchEvent(new Event("input", { bubbles: true }));
+                },
+                field.id === "i0116" ? 600 : 0,
+              );
             },
           });
           return { ok: true };
@@ -344,6 +369,15 @@ const launch = "/f5vdi/rdp/launch/Common/test-desktop";
       await helper.locator("body").getAttribute("data-native-calls"),
       null,
     );
+    await helper.bringToFront();
+    await helper.waitForFunction(
+      () => document.body.dataset.nativeCalls === "1",
+    );
+    await popup.bringToFront();
+    await helper.waitForFunction(() =>
+      Boolean(document.querySelector("#i0116").value),
+    );
+    assert.equal(await helper.getByText("Sign in", { exact: true }).count(), 1);
     await helper.bringToFront();
     await helper.getByText("Verify your identity").waitFor({ timeout: 12000 });
     assert.equal(
@@ -381,9 +415,9 @@ const launch = "/f5vdi/rdp/launch/Common/test-desktop";
         .isVisible(),
       false,
     );
-    assert.equal(requests, 2);
+    assert.equal(requests, 3);
     console.log(
-      "PASS RDP default, opt-out, sign-out and launch error recovery, bounded restart, manual MFA, and download deduplication",
+      "PASS RDP default, opt-out, sign-out and launch error recovery, foreground restart, cached sign-in, manual MFA, and download deduplication",
     );
   } finally {
     await context.close();

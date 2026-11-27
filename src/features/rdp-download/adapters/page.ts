@@ -15,6 +15,7 @@ export function selectMicrosoftAccount(expectedUrl: string, email: string) {
     );
   if (loginForm()) return;
   const pick = () => {
+    if (document.visibilityState !== "visible") return;
     const visible = (element: HTMLElement) =>
       element.getClientRects().length > 0 &&
       getComputedStyle(element).visibility === "visible";
@@ -75,7 +76,11 @@ export function selectMicrosoftAccount(expectedUrl: string, email: string) {
 }
 
 export function acceptPolicy(expectedUrl: string) {
-  if (location.href !== expectedUrl || location.pathname !== "/my.policy")
+  if (
+    location.href !== expectedUrl ||
+    location.pathname !== "/my.policy" ||
+    document.visibilityState !== "visible"
+  )
     return;
   const notice = document.body.innerText.replace(/\s+/g, " ");
   if (
@@ -175,7 +180,7 @@ export function submitFilledF5(expectedUrl: string, action: "wait" | "submit") {
   const filled = () =>
     Boolean(username.value && password.value) && !button.disabled;
   if (action === "submit") {
-    if (!filled()) return false;
+    if (!filled() || document.visibilityState !== "visible") return false;
     button.click();
     return true;
   }
@@ -218,6 +223,8 @@ export async function inspectPortal(
 ) {
   if (location.href !== expectedUrl || location.origin !== portal.origin)
     return "unknown" as const;
+  if (action !== "inspect" && document.visibilityState !== "visible")
+    return "paused" as const;
 
   const normalize = (value: string) => value.trim().replace(/\s+/g, " ");
   const visible = (element: HTMLElement) =>
@@ -253,9 +260,6 @@ export async function inspectPortal(
     const link = restartLink();
     if (!link) return "unknown" as const;
     if (action === "restart") link.click();
-    const referrer = URL.parse(document.referrer);
-    if (referrer?.origin === portal.origin && referrer.pathname === portal.path)
-      return "signed-out-from-webtop" as const;
     return "signed-out" as const;
   }
 

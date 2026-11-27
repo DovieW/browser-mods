@@ -10,10 +10,11 @@ export type Portal = {
 export const microsoftAccountOrigin = "https://login.microsoftonline.com";
 export type Run = {
   phase: "waiting" | "requested" | "downloaded" | "stopped";
-  restarted: boolean;
+  desktopDocumentId?: string;
   started?: number;
   f5Submitted?: boolean;
   microsoftShortcuts?: ("username" | "password")[];
+  microsoftSubmitted?: ("username" | "password")[];
   microsoftStatus?:
     | "looking-for-form"
     | "waiting-for-focus"

@@ -55,6 +55,15 @@ export function registerRdpHelper() {
     const tab = await chrome.tabs.get(id).catch(() => null);
     return tab?.url;
   };
+  const focusedPage = async (id: number, url: string) => {
+    const tab = await chrome.tabs.get(id).catch(() => null);
+    return (
+      tab?.url === url &&
+      tab.active &&
+      !tab.pendingUrl &&
+      (await chrome.windows.get(tab.windowId)).focused
+    );
+  };
   const result = async <Args extends unknown[], Value>(
     id: number,
     func: (...args: Args) => Value,
@@ -86,7 +95,7 @@ export function registerRdpHelper() {
       settings.portal.path === portal.path &&
       settings.portal.desktop === portal.desktop &&
       (await permitted(portal)) &&
-      (await currentUrl(id)) === url
+      (await focusedPage(id, url))
     );
   };
 
@@ -109,25 +118,25 @@ export function registerRdpHelper() {
         }))
       )
         return false;
-      const tab = await chrome.tabs.get(id);
-      return (
-        tab.url === url &&
-        !tab.pendingUrl &&
-        tab.active &&
-        (await chrome.windows.get(tab.windowId)).focused
-      );
+      return focusedPage(id, url);
     };
     const run = await readRdpRun(id);
     if (run?.phase !== "waiting") return;
     const attempted = run.microsoftShortcuts ?? [];
+    const submitted = run.microsoftSubmitted ?? [];
     const status = (microsoftStatus: NonNullable<Run["microsoftStatus"]>) =>
-      write(id, { ...run, microsoftShortcuts: attempted, microsoftStatus });
+      write(id, {
+        ...run,
+        microsoftShortcuts: attempted,
+        microsoftSubmitted: submitted,
+        microsoftStatus,
+      });
     if (!(await documentMatches())) {
       await status("waiting-for-focus");
       return;
     }
     const stages: MicrosoftStage[] = ["username", "password"];
-    const remaining = stages.filter((stage) => !attempted.includes(stage));
+    const remaining = stages.filter((stage) => !submitted.includes(stage));
     while (remaining.length) {
       await status("looking-for-form");
       const detected = await result(id, microsoftForm, [
@@ -138,43 +147,75 @@ export function registerRdpHelper() {
       ]);
       const stage = detected?.result;
       if (!stage || !detected.documentId) return;
-      const focus = await result(
-        id,
-        microsoftForm,
-        [url, account, [stage], "focus"],
-        detected.documentId,
-      );
-      if (!focus?.result || !(await documentMatches())) {
+      const wasAttempted = attempted.includes(stage);
+      const alreadyFilled =
+        wasAttempted &&
+        (
+          await result(
+            id,
+            microsoftForm,
+            [url, account, [stage], "filled"],
+            detected.documentId,
+          )
+        )?.result;
+      if (!alreadyFilled) {
+        if (wasAttempted && run.microsoftStatus !== "waiting-for-focus") {
+          await status("no-fill");
+          return;
+        }
+        const focus = await result(
+          id,
+          microsoftForm,
+          [url, account, [stage], "focus"],
+          detected.documentId,
+        );
+        if (!focus?.result || !(await documentMatches())) {
+          await status("waiting-for-focus");
+          return;
+        }
+        await status("sending-shortcut");
+        if (!(await documentMatches())) {
+          await status("waiting-for-focus");
+          return;
+        }
+        const reply: unknown = await chrome.runtime
+          .sendNativeMessage(nativeHost, { action: "bitwarden-autofill" })
+          .catch(() => null);
+        if (
+          !reply ||
+          typeof reply !== "object" ||
+          !("ok" in reply) ||
+          reply.ok !== true
+        ) {
+          await status("helper-failed");
+          return;
+        }
+        if (!wasAttempted) attempted.push(stage);
+        await status("waiting-for-fill");
+        const filled = await result(
+          id,
+          microsoftForm,
+          [url, account, [stage], "wait"],
+          detected.documentId,
+        );
+        if (!filled?.result) {
+          await status(
+            (await documentMatches()) ? "no-fill" : "waiting-for-focus",
+          );
+          return;
+        }
+      }
+      if (!(await documentMatches())) {
         await status("waiting-for-focus");
         return;
       }
-      attempted.push(stage);
-      await status("sending-shortcut");
-      if (!(await documentMatches())) return;
-      const reply: unknown = await chrome.runtime
-        .sendNativeMessage(nativeHost, { action: "bitwarden-autofill" })
-        .catch(() => null);
-      if (
-        !reply ||
-        typeof reply !== "object" ||
-        !("ok" in reply) ||
-        reply.ok !== true
-      ) {
-        await status("helper-failed");
-        return;
-      }
-      await status("waiting-for-fill");
-      const filled = await result(
-        id,
-        microsoftForm,
-        [url, account, [stage], "wait"],
-        detected.documentId,
-      );
-      if (!filled?.result || !(await documentMatches())) {
-        await status("no-fill");
-        return;
-      }
+      submitted.push(stage);
       await status("submitting");
+      if (!(await documentMatches())) {
+        submitted.pop();
+        await status("waiting-for-focus");
+        return;
+      }
       await result(
         id,
         microsoftForm,
@@ -188,13 +229,7 @@ export function registerRdpHelper() {
     }
   }
 
-  async function recoverLaunchError(
-    portal: Portal,
-    id: number,
-    url: string,
-    previous: Run | undefined,
-  ) {
-    if (previous?.restarted && previous.phase !== "downloaded") return;
+  async function recoverLaunchError(portal: Portal, id: number, url: string) {
     const denied = await chrome.scripting
       .executeScript({
         target: { tabId: id },
@@ -212,7 +247,7 @@ export function registerRdpHelper() {
         );
       });
     if (!denied || !(await stillEnabled(portal, id, url))) return;
-    await write(id, { phase: "waiting", restarted: true });
+    await write(id, { phase: "waiting" });
     if (!(await stillEnabled(portal, id, url))) return;
     const tab = await chrome.tabs.get(id);
     if (tab.url === url && !tab.pendingUrl)
@@ -229,11 +264,12 @@ export function registerRdpHelper() {
       address.pathname === "/my.policy";
     if (shouldAccept) {
       let run: Run | undefined;
+      if (!(await focusedPage(id, url))) return;
       if (portal?.origin === policyOrigin) {
         await restored;
         run = await readRdpRun(id);
         if (run?.phase !== "waiting" && (await currentUrl(id)) === url) {
-          run = { phase: "waiting", restarted: false };
+          run = { phase: "waiting" };
           await write(id, run);
         }
       }
@@ -243,7 +279,7 @@ export function registerRdpHelper() {
         (await chrome.permissions.contains({
           origins: [policyOrigin + "/*"],
         })) &&
-        (await currentUrl(id)) === url;
+        (await focusedPage(id, url));
       const current = await loadRdpPreferences();
       if (!(await policyEnabled(current))) return;
       const acknowledged = await result(id, acceptPolicy, [url]);
@@ -259,7 +295,17 @@ export function registerRdpHelper() {
       const live = await loadRdpPreferences();
       if (!live.autoSubmitF5 || !(await policyEnabled(live))) return;
       await write(id, { ...run, f5Submitted: true });
-      await result(id, submitFilledF5, [url, "submit"], ready.documentId);
+      if (!(await focusedPage(id, url))) {
+        if ((await currentUrl(id)) === url) await write(id, run);
+        return;
+      }
+      const submitted = await result(
+        id,
+        submitFilledF5,
+        [url, "submit"],
+        ready.documentId,
+      );
+      if (submitted?.result === false) await write(id, run);
       return;
     }
     if (!portal) return;
@@ -273,7 +319,7 @@ export function registerRdpHelper() {
         (await chrome.permissions.contains({
           origins: [microsoftAccountOrigin + "/*"],
         })) &&
-        (await currentUrl(id)) === url
+        (await focusedPage(id, url))
       ) {
         const live = await loadRdpPreferences();
         if (
@@ -294,20 +340,15 @@ export function registerRdpHelper() {
         await clear(id);
       return;
     }
-    if ((await currentUrl(id)) !== url) return;
+    if (!(await focusedPage(id, url))) return;
     if (!(await permitted(portal))) return;
 
     const previous = await readRdpRun(id);
     if (address.pathname === "/vdesk/hangup.php3") {
       const page = await result(id, inspectPortal, [portal, url, "inspect"]);
-      if (
-        page?.result !== "signed-out-from-webtop" &&
-        (page?.result !== "signed-out" ||
-          (previous?.restarted && previous.phase !== "downloaded"))
-      )
-        return;
+      if (page?.result !== "signed-out") return;
       if (!(await stillEnabled(portal, id, url))) return;
-      await write(id, { phase: "waiting", restarted: true });
+      await write(id, { phase: "waiting" });
       if (await stillEnabled(portal, id, url))
         await result(
           id,
@@ -321,23 +362,25 @@ export function registerRdpHelper() {
       address.pathname.startsWith("/f5vdi/rdp/launch/") &&
       address.pathname !== "/f5vdi/rdp/launch/"
     ) {
-      await recoverLaunchError(portal, id, url, previous);
+      await recoverLaunchError(portal, id, url);
       return;
     }
-    if (previous && previous.phase !== "waiting") {
+    if (
+      previous &&
+      (previous.phase === "requested" ||
+        previous.phase === "downloaded" ||
+        previous.desktopDocumentId)
+    ) {
       const expired =
         previous.phase === "requested" &&
         Date.now() - (previous.started ?? 0) > 60_000;
-      if (
-        (previous.phase === "requested" && !expired) ||
-        !(await result(id, isFreshPortalVisit, []))?.result
-      )
+      if (previous.phase === "requested" && !expired) return;
+      const visit = await result(id, isFreshPortalVisit, []);
+      if (!visit?.result || visit.documentId === previous.desktopDocumentId)
         return;
     }
     const waiting: Run =
-      previous?.phase === "waiting"
-        ? previous
-        : { phase: "waiting", restarted: false };
+      previous?.phase === "waiting" ? previous : { phase: "waiting" };
     if (address.pathname === "/" || address.pathname === "/my.policy") {
       if (!previous || previous.phase !== "waiting") await write(id, waiting);
       return;
@@ -352,7 +395,7 @@ export function registerRdpHelper() {
     const page = await result(id, inspectPortal, [portal, url, "inspect"]);
     if (!(await stillEnabled(portal, id, url))) return;
     if (page?.result !== "ready") {
-      await write(id, { phase: "stopped", restarted: waiting.restarted });
+      await write(id, { ...waiting, phase: "stopped" });
       return;
     }
 
@@ -374,19 +417,26 @@ export function registerRdpHelper() {
           await write(id, { ...waiting, phase: "stopped" });
           return;
         }
-        const requested: Run = { ...waiting, phase: "requested", started };
+        const requested: Run = {
+          ...waiting,
+          phase: "requested",
+          started,
+          ...(page.documentId ? { desktopDocumentId: page.documentId } : {}),
+        };
         await write(id, requested);
-        if (!(await stillEnabled(portal, id, url))) return;
-        if (
-          (
-            await result(
-              id,
-              inspectPortal,
-              [portal, url, "download"],
-              page.documentId,
-            )
-          )?.result === "unknown"
-        )
+        if (!(await stillEnabled(portal, id, url))) {
+          if ((await currentUrl(id)) === url && !(await focusedPage(id, url)))
+            await write(id, waiting);
+          return;
+        }
+        const download = await result(
+          id,
+          inspectPortal,
+          [portal, url, "download"],
+          page.documentId,
+        );
+        if (download?.result === "paused") await write(id, waiting);
+        if (download?.result === "unknown")
           await write(id, { ...requested, phase: "stopped" });
       });
     await downloadQueue;
@@ -435,9 +485,9 @@ export function registerRdpHelper() {
       if (jobs.get(id) === next) jobs.delete(id);
     });
   }
-  async function resumeMicrosoft(tabId?: number) {
-    const { enabled, nativeAutofill } = await prefs;
-    if (!enabled || !nativeAutofill) return;
+  async function resumeActivePage(tabId?: number) {
+    const { enabled, portal, policyOrigin } = await prefs;
+    if (!enabled || (!portal && !policyOrigin)) return;
     await restored;
     const tab =
       tabId === undefined
@@ -445,10 +495,23 @@ export function registerRdpHelper() {
             await chrome.tabs.query({ active: true, lastFocusedWindow: true })
           )[0]
         : await chrome.tabs.get(tabId);
-    if (!tab?.id || !tab.url || !ownedTabs.has(tab.id) || jobs.has(tab.id))
-      return;
-    if (portalAddress(tab.url)?.origin === microsoftAccountOrigin)
-      queuePage(tab.id, tab.url);
+    if (!tab?.id || !tab.url || tab.status !== "complete") return;
+    const address = portalAddress(tab.url);
+    if (
+      address &&
+      (address.origin === portal?.origin ||
+        (address.origin === policyOrigin &&
+          address.pathname === "/my.policy") ||
+        (address.origin === microsoftAccountOrigin && ownedTabs.has(tab.id)))
+    ) {
+      await jobs.get(tab.id);
+      if (
+        !jobs.has(tab.id) &&
+        (await focusedPage(tab.id, tab.url)) &&
+        !jobs.has(tab.id)
+      )
+        queuePage(tab.id, tab.url);
+    }
   }
   scope.listen(chrome.tabs.onUpdated, (id, change, tab) => {
     if (
@@ -461,11 +524,15 @@ export function registerRdpHelper() {
     queuePage(id, tab.url);
   });
   scope.listen(chrome.tabs.onActivated, ({ tabId }) => {
-    if (settings?.nativeAutofill) void resumeMicrosoft(tabId).catch(() => {});
+    if (settings?.enabled !== false)
+      void resumeActivePage(tabId).catch(() => {});
   });
   scope.listen(chrome.windows.onFocusChanged, (windowId) => {
-    if (windowId !== chrome.windows.WINDOW_ID_NONE && settings?.nativeAutofill)
-      void resumeMicrosoft().catch(() => {});
+    if (
+      windowId !== chrome.windows.WINDOW_ID_NONE &&
+      settings?.enabled !== false
+    )
+      void resumeActivePage().catch(() => {});
   });
   scope.listen(chrome.tabs.onRemoved, (id) => {
     if (settings && !settings.portal) return;
@@ -499,7 +566,7 @@ export function registerRdpHelper() {
       return configured();
     })().catch(() => ({ enabled: false }));
     if (samePortal && next.nativeAutofill && !previous.nativeAutofill)
-      void resumeMicrosoft().catch(() => {});
+      void resumeActivePage().catch(() => {});
   });
   scope.listen(chrome.permissions.onAdded, watchDownloads);
   scope.listen(chrome.permissions.onRemoved, watchDownloads);

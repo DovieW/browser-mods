@@ -5,7 +5,7 @@ export function microsoftForm(
   expectedUrl: string,
   email: string,
   stages: MicrosoftStage[],
-  action: "detect" | "focus" | "wait" | "submit",
+  action: "detect" | "focus" | "filled" | "wait" | "submit",
 ) {
   if (location.href !== expectedUrl) return null;
   const visible = (element: HTMLElement) => {
@@ -66,7 +66,10 @@ export function microsoftForm(
   const inspect = () => {
     const form = find();
     if (!form || !document.hasFocus()) return null;
-    if ((action === "wait" || action === "submit") && !form.field.value)
+    if (
+      (action === "wait" || action === "filled" || action === "submit") &&
+      !form.field.value
+    )
       return null;
     if (action === "focus") {
       form.field.focus({ preventScroll: true });
@@ -77,7 +80,13 @@ export function microsoftForm(
   };
 
   const immediate = inspect();
-  if (immediate || action === "submit" || action === "focus") return immediate;
+  if (
+    immediate ||
+    action === "submit" ||
+    action === "focus" ||
+    action === "filled"
+  )
+    return immediate;
 
   return new Promise<MicrosoftStage | null>((resolve) => {
     const observer = new MutationObserver(probe);
@@ -89,14 +98,10 @@ export function microsoftForm(
       document.removeEventListener("change", changed);
       window.removeEventListener("pagehide", stop);
       window.removeEventListener("focus", probe);
-      window.removeEventListener("blur", onBlur);
       resolve(stage);
     }
     function stop() {
       finish(null);
-    }
-    function onBlur() {
-      if (action === "wait") stop();
     }
     function probe() {
       const stage = inspect();
@@ -120,6 +125,5 @@ export function microsoftForm(
     document.addEventListener("change", changed);
     window.addEventListener("pagehide", stop, { once: true });
     window.addEventListener("focus", probe);
-    window.addEventListener("blur", onBlur);
   });
 }
