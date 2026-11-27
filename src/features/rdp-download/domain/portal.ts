@@ -12,11 +12,13 @@ export type Run = {
   phase: "waiting" | "requested" | "downloaded" | "stopped";
   restarted: boolean;
   started?: number;
+  f5Submitted?: boolean;
 };
 export type Preferences = {
   enabled: boolean;
   portal?: Portal;
   policyOrigin?: string;
+  autoSubmitF5?: boolean;
 };
 
 export function portalAddress(url: string) {
@@ -67,7 +69,11 @@ export function readPreferences(value: unknown): Preferences {
       ? raw.policyOrigin
       : undefined;
   const preferences: Preferences = policyOrigin
-    ? { enabled, policyOrigin }
+    ? {
+        enabled,
+        policyOrigin,
+        ...(raw.autoSubmitF5 === true ? { autoSubmitF5: true } : {}),
+      }
     : { enabled };
   const portal = raw.portal;
   if (

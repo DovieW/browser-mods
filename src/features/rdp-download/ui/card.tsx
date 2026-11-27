@@ -4,6 +4,7 @@ import {
   enableRdp,
   loadRdpPreferences,
   readRdpRun,
+  setAutoSubmitF5,
   setPolicyAcceptance,
 } from "../adapters/storage";
 import {
@@ -99,6 +100,22 @@ export function RdpCard({
           Automatically accept the F5 monitoring notice
         </label>
       )}
+      {prefs?.enabled &&
+        prefs.policyOrigin &&
+        prefs.policyOrigin === prefs.portal?.origin && (
+          <label className="check">
+            <input
+              type="checkbox"
+              checked={prefs.autoSubmitF5 === true}
+              disabled={busy}
+              onChange={(event) => {
+                const enabled = event.target.checked;
+                void save(() => setAutoSubmitF5(enabled));
+              }}
+            />
+            Submit the filled F5 login form
+          </label>
+        )}
       {prefs?.enabled && microsoft && (
         <p>
           Press Ctrl+Shift+P on the Microsoft username and password screens to

@@ -40,7 +40,21 @@ export async function setPolicyAcceptance(origin: string, enabled: boolean) {
     throw Error("Portal access was declined.");
   const current = await loadRdpPreferences();
   await chrome.storage.local.set({
-    [preferenceKey]: { ...current, policyOrigin: enabled ? origin : null },
+    [preferenceKey]: {
+      ...current,
+      policyOrigin: enabled ? origin : null,
+      autoSubmitF5:
+        current.policyOrigin === origin &&
+        enabled &&
+        current.autoSubmitF5 === true,
+    },
+  });
+}
+
+export async function setAutoSubmitF5(enabled: boolean) {
+  const current = await loadRdpPreferences();
+  await chrome.storage.local.set({
+    [preferenceKey]: { ...current, autoSubmitF5: enabled },
   });
 }
 

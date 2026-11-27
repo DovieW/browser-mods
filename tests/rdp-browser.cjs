@@ -39,8 +39,32 @@ const launch = "/f5vdi/rdp/launch/Common/test-desktop";
     const id = new URL(worker.url()).host;
     let requests = 0;
     let restarts = 0;
+    let signIns = 0;
     await context.route(portal + "/**", async (route) => {
       const { pathname, search } = new URL(route.request().url());
+      if (
+        pathname === "/my.policy" &&
+        (search === "?autofill" || route.request().method() === "POST")
+      ) {
+        if (route.request().method() === "POST") signIns++;
+        return route.fulfill({
+          contentType: "text/html",
+          body: `<h1>Secure Logon for F5 Networks</h1>
+            <form method="post" action="/my.policy">
+              <label>Username <input name="username"></label>
+              <label>Password <input type="password" name="password"></label>
+              <input type="submit" value="Logon">
+            </form>
+            <script>
+              setTimeout(() => {
+                for (const field of document.querySelectorAll("input:not([type=submit])")) {
+                  field.value = "fixture";
+                  field.dispatchEvent(new Event("input", { bubbles: true }));
+                }
+              }, 400);
+            </script>`,
+        });
+      }
       if (pathname === launch && search !== "?ok")
         return route.fulfill({ status: 403, body: "" });
       if (pathname === "/accept")
@@ -198,6 +222,30 @@ const launch = "/f5vdi/rdp/launch/Common/test-desktop";
     await denied.getByRole("link", { name: "Finish manual sign-in" }).click();
     assert.equal(await (await reauthenticated).failure(), null);
     assert.equal(requests, 2);
+    await worker.evaluate(
+      async ({ key, origin, pathname }) => {
+        await chrome.storage.local.set({
+          [key]: {
+            enabled: true,
+            policyOrigin: origin,
+            autoSubmitF5: true,
+            portal: { origin, path: pathname, desktop: "Work Desktop" },
+          },
+        });
+      },
+      { key: preferenceKey, origin: portal, pathname: webtop },
+    );
+    const filled = await context.newPage();
+    await filled.goto(portal + "/my.policy?autofill");
+    await filled.waitForURL(portal + "/my.policy", { timeout: 6_000 });
+    await filled.waitForFunction(
+      () => document.querySelector('input[type="password"]').value !== "",
+    );
+    assert.equal(
+      signIns,
+      1,
+      "A second filled F5 form must not be submitted in the same run",
+    );
     await worker.evaluate(
       ({ key, origin }) =>
         chrome.storage.local.set({

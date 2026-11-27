@@ -96,6 +96,107 @@ export function acceptPolicy(expectedUrl: string) {
   if (!control || control.dataset.browserModsAccepted !== undefined) return;
   control.dataset.browserModsAccepted = "";
   control.click();
+  return true;
+}
+
+export function submitFilledF5(expectedUrl: string, action: "wait" | "submit") {
+  if (
+    location.href !== expectedUrl ||
+    location.pathname !== "/my.policy" ||
+    !/Secure Logon\s+for F5 Networks/i.test(document.body.innerText)
+  )
+    return false;
+  const visible = (element: HTMLElement) =>
+    element.getClientRects().length > 0 &&
+    getComputedStyle(element).visibility === "visible";
+  const forms = [...document.forms].filter((form) => {
+    const target = URL.parse(form.action);
+    return (
+      form.method === "post" &&
+      target?.origin === location.origin &&
+      target.pathname === location.pathname
+    );
+  });
+  const candidates = forms.flatMap((form) => {
+    const usernames = [
+      ...form.querySelectorAll<HTMLInputElement>(
+        'input[name="username" i], input[autocomplete="username"]',
+      ),
+    ].filter(
+      (field) =>
+        ["text", "email"].includes(field.type) &&
+        visible(field) &&
+        !field.disabled,
+    );
+    const passwords = [
+      ...form.querySelectorAll<HTMLInputElement>('input[type="password"]'),
+    ].filter((field) => visible(field) && !field.disabled);
+    const buttons = [
+      ...form.querySelectorAll<HTMLInputElement | HTMLButtonElement>(
+        'input[type="submit"], button[type="submit"], button:not([type])',
+      ),
+    ].filter(
+      (button) =>
+        visible(button) &&
+        !button.disabled &&
+        (button instanceof HTMLInputElement
+          ? button.value
+          : button.innerText
+        ).trim() === "Logon" &&
+        !button.hasAttribute("formaction") &&
+        !button.hasAttribute("formmethod"),
+    );
+    const [username] = usernames;
+    const [password] = passwords;
+    const [button] = buttons;
+    return usernames.length === 1 &&
+      passwords.length === 1 &&
+      buttons.length === 1 &&
+      username &&
+      password &&
+      button
+      ? [{ form, username, password, button }]
+      : [];
+  });
+  const [candidate] = candidates;
+  if (candidates.length !== 1 || !candidate) return false;
+  const { form, username, password, button } = candidate;
+  const filled = () =>
+    Boolean(username.value && password.value) && !button.disabled;
+  if (action === "submit") {
+    if (!filled()) return false;
+    button.click();
+    return true;
+  }
+  if (filled()) return true;
+  return new Promise<boolean>((resolve) => {
+    const timer = setTimeout(stop, 20_000);
+    function finish(ready: boolean) {
+      clearTimeout(timer);
+      form.removeEventListener("input", onInput);
+      form.removeEventListener("change", onInput);
+      form.removeEventListener("submit", stop);
+      window.removeEventListener("pagehide", stop);
+      resolve(ready);
+    }
+    function stop() {
+      finish(false);
+    }
+    function onInput(event: Event) {
+      if (
+        event.isTrusted &&
+        (event.target === username || event.target === password)
+      ) {
+        stop();
+        return;
+      }
+      if (filled()) finish(true);
+    }
+    form.addEventListener("input", onInput);
+    form.addEventListener("change", onInput);
+    form.addEventListener("submit", stop, { once: true });
+    window.addEventListener("pagehide", stop, { once: true });
+  });
 }
 
 // Chrome serializes this function into an isolated world. Keep it self-contained.

@@ -15,6 +15,7 @@ import {
   inspectPortal,
   isFreshPortalVisit,
   selectMicrosoftAccount,
+  submitFilledF5,
 } from "./page";
 import { loadRdpPreferences, readRdpRun } from "./storage";
 
@@ -127,22 +128,38 @@ export function registerRdpHelper() {
       address?.origin === policyOrigin &&
       address.pathname === "/my.policy";
     if (shouldAccept) {
+      let run: Run | undefined;
       if (portal?.origin === policyOrigin) {
         await restored;
-        const run = await readRdpRun(id);
-        if (run?.phase !== "waiting" && (await currentUrl(id)) === url)
-          await write(id, { phase: "waiting", restarted: false });
+        run = await readRdpRun(id);
+        if (run?.phase !== "waiting" && (await currentUrl(id)) === url) {
+          run = { phase: "waiting", restarted: false };
+          await write(id, run);
+        }
       }
-      const current = await loadRdpPreferences();
-      if (
+      const policyEnabled = async (current: Preferences) =>
         current.enabled &&
         current.policyOrigin === policyOrigin &&
         (await chrome.permissions.contains({
           origins: [policyOrigin + "/*"],
         })) &&
-        (await currentUrl(id)) === url
+        (await currentUrl(id)) === url;
+      const current = await loadRdpPreferences();
+      if (!(await policyEnabled(current))) return;
+      const acknowledged = await result(id, acceptPolicy, [url]);
+      if (
+        acknowledged?.result ||
+        !run ||
+        run.f5Submitted ||
+        !current.autoSubmitF5
       )
-        await result(id, acceptPolicy, [url]);
+        return;
+      const ready = await result(id, submitFilledF5, [url, "wait"]);
+      if (!ready?.result || !ready.documentId) return;
+      const live = await loadRdpPreferences();
+      if (!live.autoSubmitF5 || !(await policyEnabled(live))) return;
+      await write(id, { ...run, f5Submitted: true });
+      await result(id, submitFilledF5, [url, "submit"], ready.documentId);
       return;
     }
     if (!portal) return;
